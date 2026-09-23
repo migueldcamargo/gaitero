@@ -1,1 +1,61 @@
-<!doctype html><title>placeholder</title><p>em construção</p>
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+<title>Gaitero Math</title>
+<meta name="description" content="Treino gamificado de matemática com as questões da P1 e da P2 do 7º ano.">
+<meta name="theme-color" content="#58CC02">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Gaitero Math">
+<link rel="icon" type="image/png" href="assets/icon-192.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:ital,wght@0,600;0,700;0,800;0,900;1,700&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="splash">
+  <img id="splash-img" src="assets/splash.jpg" alt="GAITERO MATH">
+  <div class="splash-fallback" aria-hidden="true">
+    <div class="splash-badge">G</div>
+    <div class="splash-name">GAITERO <span>MATH</span></div>
+    <div class="splash-dots"><i></i><i></i><i></i></div>
+  </div>
+</div>
+
+<header class="topbar" id="topbar">
+  <a class="brand" href="#" data-go="" aria-label="GAITERO MATH — início"><span data-avatar="sm"></span><span class="brand-name">GAITERO <b>MATH</b></span></a>
+  <nav class="mainnav" id="mainnav" aria-label="Navegação principal">
+    <a href="#" data-go="" data-nav="home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.2 12 4l9 7.2V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Início</span></a>
+    <a href="#p1" data-go="p1" data-nav="p1"><span class="nav-badge" aria-hidden="true">P1</span><span>Prova 1</span></a>
+    <a href="#p2" data-go="p2" data-nav="p2"><span class="nav-badge nb-2" aria-hidden="true">P2</span><span>Prova 2</span></a>
+    <a href="#cola" data-go="cola" data-nav="cola" aria-label="Papel de Cola"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2h9l5 5v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zm8 1.5V8h4.5M8 12h8M8 15.5h8M8 19h5"/></svg><span>Cola</span></a>
+  </nav>
+  <div class="top-stats">
+    <span class="chip chip-streak" title="Sequência de acertos" aria-label="Sequência de acertos"><span aria-hidden="true">🔥</span> <b class="js-streak">0</b></span>
+    <span class="chip chip-days" title="Dias seguidos de estudo" aria-label="Dias seguidos de estudo"><span aria-hidden="true">🏆</span> <b class="js-days">0</b></span>
+    <button class="icon-btn icon-btn-sm" data-act="settings" aria-label="Opções" title="Opções"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+  </div>
+</header>
+
+<main id="view"></main>
+<div class="rotate-lock" role="alert">
+  <div class="rl-phone" aria-hidden="true"></div>
+  <h2 class="rl-title">Gira o celular, Gaitero!</h2>
+  <p class="rl-text">O GAITERO MATH foi feito para usar com o celular <b>em pé</b> (na vertical).</p>
+</div>
+<div id="sheet-root"></div>
+<div id="toast-root" aria-live="polite"></div>
+<noscript><p style="padding:24px;font-family:sans-serif">O GAITERO MATH precisa do JavaScript ligado no navegador.</p></noscript>
+
+<script src="logic.js"></script>
+<script src="formulas.js"></script>
+<script src="questions.js"></script>
+<script src="variations.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

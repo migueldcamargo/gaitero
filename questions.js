@@ -104,7 +104,7 @@
         t(X(a + b + c / 2), Y(c / 2) + 3.5, String(c * c), 'fg-area fg-area-xs');
     }
     var H = Math.ceil(30 + sc * a + 22);
-    return '<svg class="fig fig-squares" viewBox="0 0 360 ' + H + '" role="img" aria-label="Figura formada pelos quadrados ABCJ, DEIJ e FGHI">' + s + '</svg>';
+    return '<svg class="fig fig-squares" viewBox="0 0 382 ' + H + '" role="img" aria-label="Figura formada pelos quadrados ABCJ, DEIJ e FGHI">' + s + '</svg>';
   };
 
   // Região retangular coberta por lajotas quadradas (P2 Q10). Medidas em cm.
@@ -162,7 +162,7 @@
           final: '6, 7 e 8',
           steps: {
             ask: 'Descobrir <b>três números</b> que vêm um depois do outro e que, somados, dão <b>21</b>.',
-            concept: 'Gaiteiro, <b>números consecutivos</b> são números que vêm um depois do outro, como 4, 5 e 6. Cada um é o anterior <b>mais 1</b>.',
+            concept: 'Gaitero, <b>números consecutivos</b> são números que vêm um depois do outro, como 4, 5 e 6. Cada um é o anterior <b>mais 1</b>.',
             data: 'São <b>3 números</b> seguidos e a <b>soma</b> deles é <b>21</b>.',
             s1: 'Como temos três números e a soma é 21, dá para achar primeiro o <b>número do meio</b>: é só dividir a soma igualmente entre os três.<div class="calc">[[21 ÷ 3 = 7]]</div>O número do meio é <b>7</b>.',
             s2: 'Agora pegamos o número <b>anterior</b> e o <b>próximo</b>:<div class="calc">[[7 - 1 = 6]] &nbsp;e&nbsp; [[7 + 1 = 8]]</div><p class="aside">Outro jeito (com equação): os números são [[x]], [[x + 1]] e [[x + 2]]. Então [[3x + 3 = 21]], [[3x = 18]] e [[x = 6]].</p>',

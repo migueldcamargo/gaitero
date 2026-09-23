@@ -68,7 +68,10 @@
     var neg = n < 0 && (Number(intp.replace(/\./g, '')) > 0 || Number(d) > 0);
     return (neg ? '-' : '') + intp + (d ? ',' + d : '');
   }
-  function brMoney(n) { return 'R$ ' + brNum(n, 2); }
+  function brMoney(n) {
+    var parts = Math.abs(n).toFixed(2).split('.');
+    return 'R$ ' + (n < 0 ? '-' : '') + parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ',' + parts[1];
+  }
 
   // Lê "8.400", "62,5", "R$ 54.000,00", "54 mil", "335/29", "x = 3"...
   // Devolve uma lista de leituras possíveis (ex.: "8.400" pode ser 8400 ou 8,4) ou null.

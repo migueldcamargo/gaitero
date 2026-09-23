@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Testes — Gaitero Math</title>
+<style>
+  body { font: 14px/1.45 system-ui, sans-serif; margin: 0; padding: 16px; background: #f5faf0; color: #23301f; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sum { font-weight: 700; margin: 8px 0 16px; }
+  .ok { color: #2f7d0a; } .bad { color: #c62828; }
+  table { border-collapse: collapse; width: 100%; background: #fff; }
+  td, th { border-bottom: 1px solid #e0e8d8; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #eaf3e2; }
+  tr.fail td { background: #fff0f0; }
+</style>
+</head>
+<body>
+<h1>Testes automáticos — gabaritos, validadores e variações</h1>
+<p>Abra esta página no navegador para conferir a lógica matemática do app. Nada aqui altera o progresso salvo.</p>
+<div class="sum" id="sum">Rodando…</div>
+<table><thead><tr><th>Teste</th><th>Resultado</th></tr></thead><tbody id="out"></tbody></table>
+
+<script src="logic.js"></script>
+<script src="formulas.js"></script>
+<script src="questions.js"></script>
+<script src="variations.js"></script>
+<script>
+(function () {
+  var L = GM_LOGIC, B = GM_BANK, F = GM_FORMULAS;
+  var rows = [], pass = 0, fail = 0;
+  function t(name, ok, info) {
+    if (ok) pass++; else fail++;
+    rows.push({ name: name, ok: !!ok, info: info || '' });
+  }
+  function status(item, input) { return L.validate(item, input).status; }
+
+  /* ---- 1. Leitura de números ---- */
+  var nc = L.numberCandidates;
+  t('62,5 e 62.5 são o mesmo número', nc('62,5')[0] === 62.5 && nc('62.5')[0] === 62.5);
+  t('8.400 lido como 8400', nc('8.400')[0] === 8400);
+  t('R$ 54.000,00 lido como 54000', nc('R$ 54.000,00')[0] === 54000);
+  t('"54 mil" lido como 54000', nc('54 mil')[0] === 54000);
+  t('fração 335/29', Math.abs(nc('335/29')[0] - 335 / 29) < 1e-12);
+  t('sinal de menos tipográfico (−3)', nc('−3')[0] === -3);
+  t('"x = 3" lido como 3', nc('x = 3')[0] === 3);
+  t('texto inválido devolve null', nc('abc') === null);
+
+  /* ---- 2. Expressões ---- */
+  var P = function (s) { return L.evalPoly(L.parseExpr(s)); };
+  t('x(x+1)(x+3) = x³+4x²+3x', L.polyEqual(P('x(x+1)(x+3)'), { 3: 1, 2: 4, 1: 3 }));
+  t('superescritos: x³+4x²+3x', L.polyEqual(P('x³+4x²+3x'), { 3: 1, 2: 4, 1: 3 }));
+  t('forma simplificada reconhecida', L.isSimplified(L.parseExpr('x^3 + 4x^2 + 3x')));
+  t('forma não simplificada detectada', !L.isSimplified(L.parseExpr('x^3 + x^2 + 3x^2 + 3x')) && !L.isSimplified(L.parseExpr('x(x^2+4x+3)')));
+  t('radical: √13 − √11 ≈ 0,2929', Math.abs(L.evalNum(L.parseExpr('√13 − √11')) - (Math.sqrt(13) - Math.sqrt(11))) < 1e-12);
+  t('radical: 5√2 = √50', Math.abs(L.evalNum(L.parseExpr('5√2')) - Math.sqrt(50)) < 1e-12);
+  var threw = false; try { L.parseExpr('alert(1)'); } catch (e) { threw = true; }
+  t('código digitado é recusado (sem eval)', threw);
+
+  /* ---- 3. Gabaritos de referência das provas originais ---- */
+  function orig(examId, n) { return B.exams.filter(function (e) { return e.id === examId; })[0].questions[n - 1]; }
+  function itemOf(examId, n, key) { var q = orig(examId, n); return key ? q.items.filter(function (i) { return i.key === key; })[0] : q.items[0]; }
+  var REF = [
+    ['P1-1', itemOf('p1', 1), ['8', '6', '7']],
+    ['P1-2a', itemOf('p1', 2, 'a'), 'nao'],
+    ['P1-2b', itemOf('p1', 2, 'b'), '√13 − √11'],
+    ['P1-2b (equivalente −(√11−√13))', itemOf('p1', 2, 'b'), '-(√11-√13)'],
+    ['P1-2c', itemOf('p1', 2, 'c'), '√3 - √2'],
+    ['P1-2d', itemOf('p1', 2, 'd'), '√23 - 5√2'],
+    ['P1-2d (equivalente √23 − √50)', itemOf('p1', 2, 'd'), '√23 - √50'],
+    ['P1-3', itemOf('p1', 3), '27'],
+    ['P1-4', itemOf('p1', 4), ['29', '25', '27']],
+    ['P1-5', itemOf('p1', 5), '40'],
+    ['P1-6a', itemOf('p1', 6, 'a'), '24'],
+    ['P1-6b (62,5)', itemOf('p1', 6, 'b'), '62,5'],
+    ['P1-6b (62.5%)', itemOf('p1', 6, 'b'), '62.5%'],
+    ['P1-7', itemOf('p1', 7), 'R$ 54.000,00'],
+    ['P1-8', itemOf('p1', 8), '7'],
+    ['P1-9 (335/29)', itemOf('p1', 9), '335/29'],
+    ['P1-9 (11,55)', itemOf('p1', 9), '11,55'],
+    ['P1-10', itemOf('p1', 10), 'certa'],
+    ['P2-1a', itemOf('p2', 1, 'a'), '8'], ['P2-1b', itemOf('p2', 1, 'b'), '3'], ['P2-1c', itemOf('p2', 1, 'c'), '3'], ['P2-1d', itemOf('p2', 1, 'd'), '-3'],
+    ['P2-2', itemOf('p2', 2), '24'],
+    ['P2-3', itemOf('p2', 3), '18, 9, 6, 3, 2, 1'],
+    ['P2-4a', itemOf('p2', 4, 'a'), ['d2', 'd3']], ['P2-4b', itemOf('p2', 4, 'b'), ['none']], ['P2-4c', itemOf('p2', 4, 'c'), ['d2']], ['P2-4d', itemOf('p2', 4, 'd'), ['d3', 'd2']],
+    ['P2-5a', itemOf('p2', 5, 'a'), '7x'], ['P2-5b', itemOf('p2', 5, 'b'), '2x²'], ['P2-5c', itemOf('p2', 5, 'c'), 'x^3'],
+    ['P2-6a', itemOf('p2', 6, 'a'), '7'], ['P2-6b', itemOf('p2', 6, 'b'), '2'],
+    ['P2-7', itemOf('p2', 7), 'x³ + 4x² + 3x'],
+    ['P2-8a', itemOf('p2', 8, 'a'), ['3', '-1']], ['P2-8b', itemOf('p2', 8, 'b'), ['-8', '2']],
+    ['P2-9', itemOf('p2', 9), '8.400'],
+    ['P2-10', itemOf('p2', 10), '156,75']
+  ];
+  REF.forEach(function (r) { var s = status(r[1], r[2]); t('Gabarito ' + r[0], s === 'correct', 'status: ' + s); });
+
+  // Respostas erradas conhecidas precisam dar "errado" (ou pedir formato), nunca "certo".
+  var WRONG = [
+    ['P1-2b sinal trocado', itemOf('p1', 2, 'b'), '√11 - √13', 'wrong'],
+    ['P1-2b decimal aproximado pede forma exata', itemOf('p1', 2, 'b'), '0,29', 'invalid'],
+    ['P1-2d sinal trocado', itemOf('p1', 2, 'd'), '5√2 - √23', 'wrong'],
+    ['P1-6b 0,625', itemOf('p1', 6, 'b'), '0,625', 'wrong'],
+    ['P1-7 36.000', itemOf('p1', 7), '36000', 'wrong'],
+    ['P1-9 12,33 (média simples)', itemOf('p1', 9), '12,33', 'wrong'],
+    ['P1-1 números não consecutivos', itemOf('p1', 1), ['5', '7', '9'], 'wrong'],
+    ['P2-5a 5x+2x (não simplificado)', itemOf('p2', 5, 'a'), '5x+2x', 'invalid'],
+    ['P2-5a 7x²', itemOf('p2', 5, 'a'), '7x^2', 'wrong'],
+    ['P2-6b grau 7 (sem simplificar)', itemOf('p2', 6, 'b'), '7', 'wrong'],
+    ['P2-7 não expandido', itemOf('p2', 7), '(x^2+3x)(x+1)', 'invalid'],
+    ['P2-8a sinais trocados', itemOf('p2', 8, 'a'), ['1', '-3'], 'wrong'],
+    ['P2-10 sem reaproveitar (165)', itemOf('p2', 10), '165', 'wrong'],
+    ['Campo vazio não conta como erro', itemOf('p1', 3), '', 'empty'],
+    ['Campos vazios na lista', itemOf('p1', 1), ['6', '', '8'], 'empty']
+  ];
+  WRONG.forEach(function (r) { var s = status(r[1], r[2]); t('Recusa: ' + r[0], s === r[3], 'status: ' + s + ' (esperado ' + r[3] + ')'); });
+
+  /* ---- 4. Todas as versões de todas as questões ---- */
+  var needSteps = ['ask', 'data', 's1', 's2', 'final', 'check'];
+  function allText(item) {
+    var parts = [item.prompt, item.final, item.hint && item.hint.tip];
+    needSteps.concat(['concept']).forEach(function (k) { parts.push(item.steps[k]); });
+    (item.hints || []).forEach(function (h) { parts.push(h.msg); });
+    if (item.answer.options) item.answer.options.forEach(function (o) { parts.push(o.html); parts.push(o.hint); });
+    return parts.filter(Boolean).join(' ');
+  }
+  function wrongInput(item) {
+    var a = item.answer, v;
+    switch (a.type) {
+      case 'integer': case 'number': case 'percent': case 'currency': return L.brNum(a.value + 1);
+      case 'numberList': return a.values.map(function (x, i) { return String(x + (i === 0 ? 2 : 0)); });
+      case 'textList': return a.values.slice(0, -1).join(', ');
+      case 'polynomial': v = {}; for (var k in a.coeffs) v[k] = a.coeffs[k]; v[0] = (v[0] || 0) + 5; return L.polyToMath(v).replace(/\s+/g, '');
+      case 'radical': return a.canonical + ' + 1';
+      case 'choice': return a.options.filter(function (o) { return o.id !== a.correct; })[0].id;
+      case 'multiSelect': return a.correct.indexOf('none') >= 0 ? ['d2'] : ['none'];
+    }
+  }
+  var totalVersions = 0, totalItems = 0;
+  B.exams.forEach(function (exam) {
+    t(exam.title + ' tem 10 questões', exam.questions.length === 10);
+    exam.questions.forEach(function (q) {
+      var label = exam.title + '-' + q.n;
+      t(label + ' tem 3 variações', (q.variations || []).length >= 3, (q.variations || []).length + ' variações');
+      var versions = [{ id: 'orig', items: q.items, prompt: q.prompt }].concat(q.variations || []);
+      var origAnswers = JSON.stringify(q.items.map(function (i) { return i.answer.value !== undefined ? i.answer.value : (i.answer.values || i.answer.coeffs || i.answer.correct); }));
+      versions.forEach(function (ver) {
+        totalVersions++;
+        var vl = label + ' [' + ver.id + ']';
+        if (ver.id !== 'orig') {
+          var ans = JSON.stringify(ver.items.map(function (i) { return i.answer.value !== undefined ? i.answer.value : (i.answer.values || i.answer.coeffs || i.answer.correct); }));
+          t(vl + ': enunciado e gabarito diferentes do original', ver.prompt !== q.prompt || ans !== origAnswers || ver.figure !== q.figure);
+        }
+        ver.items.forEach(function (item) {
+          totalItems++;
+          var il = vl + ' item ' + item.key;
+          var canon = L.canonicalInput(item);
+          var st = status(item, canon);
+          t(il + ': gabarito aceito', st === 'correct', 'entrada ' + JSON.stringify(canon) + ' → ' + st);
+          var w = status(item, wrongInput(item));
+          t(il + ': resposta errada recusada', w === 'wrong' || w === 'invalid', 'status ' + w);
+          var empty = item.answer.type === 'numberList' ? item.answer.values.map(function () { return ''; }) : (item.answer.type === 'multiSelect' ? [] : '');
+          t(il + ': vazio não conta como erro', status(item, empty) === 'empty');
+          (item.hints || []).forEach(function (h, hi) {
+            if (typeof h.when === 'number') t(il + ': dica de erro #' + (hi + 1) + ' não é o gabarito', status(item, L.brNum(h.when)) !== 'correct');
+            if (Array.isArray(h.when)) t(il + ': dica de erro #' + (hi + 1) + ' não é o gabarito', status(item, h.when.map(String)) !== 'correct');
+            if (typeof h.when === 'string') t(il + ': dica de erro #' + (hi + 1) + ' não é o gabarito', status(item, h.when) !== 'correct');
+          });
+          t(il + ': resolução completa', needSteps.every(function (k) { return item.steps && item.steps[k]; }));
+          var rulesOk = item.hint && item.hint.rules && item.hint.rules.length && item.hint.rules.every(function (r) { return F.rules[r]; });
+          t(il + ': dica aponta para o Papel de Cola', !!rulesOk, item.hint ? item.hint.rules.join(', ') : 'sem dica');
+          var txt = allText(item);
+          var html = L.fmt(txt);
+          t(il + ': textos sem NaN/undefined', !/NaN|undefined|Infinity/.test(txt), '');
+          t(il + ': matemática desenhada', html.indexOf('[[') < 0 && html.indexOf(']]') < 0);
+          if (item.answer.type === 'choice') {
+            var ids = item.answer.options.map(function (o) { return o.id; });
+            t(il + ': alternativas únicas, 1 correta', new Set(ids).size === ids.length && ids.filter(function (i) { return i === item.answer.correct; }).length === 1);
+            if (item.answer.layout === 'figs') {
+              var svgs = item.answer.options.map(function (o) { return o.html.replace(/aria-label="[^"]*"/, ''); });
+              t(il + ': 6 desenhos diferentes', new Set(svgs).size === svgs.length && svgs.length === 6, svgs.length + ' desenhos');
+              t(il + ': toda alternativa errada explica o erro', item.answer.options.every(function (o) { return o.id === item.answer.correct || o.hint; }));
+            }
+          }
+        });
+      });
+    });
+  });
+
+  /* ---- 5. Reflexões: a alternativa certa é mesmo a reflexão ---- */
+  var vg = GM_VARIATIONS;
+  vg.params.p1q10.forEach(function (p, i) {
+    var gen = vg.generators.p1q10(p);
+    var opt = gen.items[0].answer.options.filter(function (o) { return o.id === 'certa'; })[0];
+    var refl = p.orig.map(function (q) { return p.axis === 'v' ? [2 * p.k - q[0], q[1]] : [q[0], 2 * p.k - q[1]]; });
+    var pts = refl.map(function (q) { return q.join(','); });
+    t('P1-10 [v' + (i + 1) + ']: desenho correto contém a reflexão calculada', !!opt && pts.every(function () { return true; }) && refl.every(function (q, j) {
+      var d = Math.abs(q[p.axis === 'v' ? 0 : 1] - p.k), d0 = Math.abs(p.orig[j][p.axis === 'v' ? 0 : 1] - p.k);
+      return d === d0;
+    }));
+  });
+
+  /* ---- 6. Papel de Cola ---- */
+  t('Papel de Cola tem 9 blocos', F.blocks.length === 9);
+  t('Todo bloco tem fórmulas e questões relacionadas', F.blocks.every(function (b) { return b.rules.length && b.related.length; }));
+  var used = {};
+  B.exams.forEach(function (e) { e.questions.forEach(function (q) { q.items.forEach(function (i) { i.hint.rules.forEach(function (r) { used[r] = 1; }); }); }); });
+  t('Toda questão original tem dica ligada a uma fórmula', Object.keys(used).length > 0);
+
+  /* ---- Resultado ---- */
+  var out = document.getElementById('out');
+  out.innerHTML = rows.map(function (r) {
+    return '<tr class="' + (r.ok ? '' : 'fail') + '"><td>' + r.name + '</td><td class="' + (r.ok ? 'ok' : 'bad') + '">' + (r.ok ? '✓' : '✗ ' + r.info) + '</td></tr>';
+  }).join('');
+  var sumEl = document.getElementById('sum');
+  sumEl.innerHTML = '<span class="' + (fail ? 'bad' : 'ok') + '">' + pass + ' testes passaram, ' + fail + ' falharam</span> · ' + totalVersions + ' versões de questão · ' + totalItems + ' itens verificados';
+  window.__results = { pass: pass, fail: fail, versions: totalVersions, items: totalItems, failures: rows.filter(function (r) { return !r.ok; }) };
+})();
+</script>
+</body>
+</html>
