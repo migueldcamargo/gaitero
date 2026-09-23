@@ -35,7 +35,7 @@
         { id: 'par-impar', name: 'Par e ímpar', formula: 'Par: [[2n]] &nbsp;·&nbsp; Ímpar: [[2n + 1]]', note: 'Aqui [[n]] é um número inteiro. Par divide por 2 sem sobrar; ímpar sobra 1.', example: '[[2 * 7 = 14]] é par · [[2 * 7 + 1 = 15]] é ímpar' },
         { id: 'consecutivos', name: 'Números consecutivos', formula: bx(['[[x]]', '[[x + 1]]', '[[x + 2]]']), note: 'Consecutivos vêm um depois do outro: aumentam de <b>1 em 1</b>. Dois consecutivos:' + bx(['[[x]]', '[[x + 1]]']), example: bx([4, 5, 6]) + '→ [[x = 4]]. Somando: [[x + x + 1 + x + 2 = 3x + 3]]' },
         { id: 'impares-consecutivos', name: 'Ímpares consecutivos', formula: bx(['[[x]]', '[[x + 2]]', '[[x + 4]]']), note: 'Com [[x]] ímpar. Ímpares seguidos aumentam de <b>2 em 2</b> (pulam o par do meio). Pares seguidos também, com [[x]] par.', example: bx([7, 9, 11]) + '→ [[x = 7]]. Somando: [[x + x + 2 + x + 4 = 3x + 6]]' },
-        { id: 'traducoes', name: 'Traduzindo o texto', formula: 'Dobro: [[2x]] &nbsp;·&nbsp; Triplo: [[3x]] &nbsp;·&nbsp; "é igual a": [[=]]', note: 'Para descobrir o número, desfaça as contas de trás para frente: o "+" vira "−" e o "×" vira "÷".', example: '"O triplo de um número mais 5 é 20" → [[3x + 5 = 20]] → [[3x = 15]] → [[x = 5]]' }
+        { id: 'traducoes', name: 'Traduzindo o texto', formula: 'Dobro: [[2x]] &nbsp;·&nbsp; Triplo: [[3x]] &nbsp;·&nbsp; "é igual a": [[=]]', note: 'Para descobrir o número, desfaça as contas de trás para frente: o "+" vira "−" e a multiplicação vira divisão.', example: '"O triplo de um número mais 5 é 20" → [[3x + 5 = 20]] → [[3x = 15]] → [[x = 5]]' }
       ],
       tip: 'Consecutivos aumentam de 1 em 1. Ímpares (ou pares) consecutivos, de 2 em 2.',
       related: ['p1-1', 'p1-3', 'p1-4']
@@ -55,9 +55,9 @@
       id: 'porcentagem', label: 'Porcentagem', icon: '%', color: 'blue',
       title: 'Porcentagem',
       rules: [
-        { id: 'pct-parte', name: 'Parte de um total', formula: 'Parte = Total × [[frac{porcentagem}{100}]]', note: 'Porcentagem é "de cada 100". 30% = [[frac{30}{100} = 0,3]].', example: '30% de 80 → [[80 * frac{30}{100}]]. Macete: 10% é dividir por 10.' },
-        { id: 'pct-porcentagem', name: 'Quanto por cento?', formula: 'Porcentagem = [[frac{Parte}{Total}]] × 100', note: 'A <b>parte</b> vai em cima, o <b>total</b> embaixo. Depois, multiplique por 100.', example: '15 de 60 → [[frac{15}{60} = 0,25]] → 25%' },
-        { id: 'pct-desconto', name: 'Preço depois do desconto', formula: 'Preço final = Preço inicial × [[(1 - frac{desconto}{100})]]', note: 'Primeiro veja com quantos por cento o preço fica. Depois calcule essa porcentagem do preço inicial.', example: 'R$ 200 com 10% de desconto → paga 90% → [[200 * 0,9 = 180]]' }
+        { id: 'pct-parte', name: 'Parte de um total', formula: '30% de 80 → [[0,3 * 80 = 24]]', note: '<b>100% é o todo.</b> Para a porcentagem virar número, a <b>vírgula pula 2 casas para a esquerda</b>: 30% = 0,3 · 70% = 0,7 · 150% = 1,5. Depois é só multiplicar.', example: '45% de 200 → [[0,45 * 200 = 90]]' },
+        { id: 'pct-porcentagem', name: 'Quanto por cento?', formula: '[[frac{Parte}{Total}]] e depois × 100', note: 'A <b>parte</b> vai em cima, o <b>total</b> embaixo: faça a divisão na <b>chave</b>. Depois multiplique por 100: a <b>vírgula pula 2 casas para a direita</b>.', example: '15 de 60 → [[frac{15}{60} = 0,25]] → 25%' },
+        { id: 'pct-desconto', name: 'Preço depois do desconto', formula: 'Desconto de 40% → sobra 60% → calcule 60% do preço', note: 'O preço inicial é 100%. Tirando o desconto, veja quanto <b>sobrou</b> ([[100% - 40% = 60%]]). A conta é da <b>sobra</b>, e não do desconto!', example: 'R$ 200 com 10% de desconto → sobra 90% → [[0,9 * 200 = 180]]' }
       ],
       tip: 'Desconto de 40% significa pagar os 60% restantes.',
       related: ['p1-6', 'p1-7']
@@ -88,15 +88,15 @@
       id: 'medidas', label: 'Medidas', icon: '📏', color: 'blue',
       title: 'Medidas e custo',
       rules: [
-        { id: 'conversao', name: 'Conversão de unidades', formula: '1 m = 100 cm &nbsp;·&nbsp; 1 cm = 10 mm', note: 'm → cm: multiplica por 100. mm → cm: divide por 10. Deixe tudo na <b>mesma unidade</b> antes de calcular.', example: '1,5 m = 150 cm · 250 mm = 25 cm' },
-        { id: 'lajotas', name: 'Quantidade de peças', formula: 'Quantidade = [[frac{Área total}{Área de uma peça}]]', note: 'Se o resultado precisa ser inteiro, arredonde <b>para cima</b>. Quando há cortes, veja se os recortes podem ser <b>reaproveitados</b> (uma peça cortada ao meio cobre dois pedaços).', example: 'Região 40 × 20 cm, peça 10 × 10 → [[frac{800}{100} = 8]] peças' },
-        { id: 'custo', name: 'Custo total', formula: 'Custo = Quantidade × Preço de cada um', note: '', example: '8 peças de R$ 3,50 → [[8 * 3,50 = 28]] reais' }
+        { id: 'conversao', name: 'Conversão de unidades', formula: '1 m = 100 cm &nbsp;·&nbsp; 1 cm = 10 mm', note: 'm → cm: multiplica por 100 (a <b>vírgula pula 2 casas para a direita</b>). mm → cm: divide por 10 (a <b>vírgula pula 1 casa para a esquerda</b>). Deixe tudo na <b>mesma unidade</b> antes de calcular.', example: '1,5 m = 150 cm · 250 mm = 25 cm' },
+        { id: 'lajotas', name: 'Quantidade de peças', formula: 'Quantidade = [[frac{Área total}{Área de uma peça}]]', note: 'Faça a divisão na <b>chave</b>. Se o resultado precisa ser inteiro, arredonde <b>para cima</b>. Quando há cortes, veja se os recortes podem ser <b>reaproveitados</b> (uma peça cortada ao meio cobre dois pedaços).', example: 'Região 40 × 20 cm, peça 10 × 10 → [[frac{800}{100} = 8]] peças' },
+        { id: 'custo', name: 'Custo total', formula: 'Custo = Quantidade × Preço de cada um', note: 'Na <b>conta armada</b>, faça a conta sem a vírgula e, no fim, conte as casas depois da vírgula.', example: '8 peças de R$ 3,50 → [[8 * 3,50 = 28]] reais' }
       ],
       tip: 'Primeiro converta, depois calcule área, quantidade e preço.',
       related: ['p2-10']
     },
     {
-      id: 'divisores', label: 'Divisores', icon: '÷', color: 'green',
+      id: 'divisores', label: 'Divisores', icon: 'D', color: 'green',
       title: 'Divisibilidade e divisores',
       rules: [
         { id: 'div2', name: 'Divisível por 2', formula: 'Último algarismo: 0, 2, 4, 6 ou 8', note: 'Ou seja: o número é par.', example: '1.358 termina em 8 → divisível por 2' },
@@ -112,7 +112,7 @@
       title: 'Polinômios',
       rules: [
         { id: 'semelhantes', name: 'Termos semelhantes', formula: '[[5x + 2x = 7x]]', note: 'Só junta termo com a <b>mesma letra e o mesmo expoente</b>. Soma os números da frente; a parte com letra não muda.', example: '[[3x^2 - 5x^2 = -2x^2]] · [[x^2 + x]] não junta' },
-        { id: 'distributiva', name: 'Distributiva', formula: '[[a(b + c) = ab + ac]]', note: 'Com dois parênteses, cada termo do primeiro multiplica cada termo do segundo.', example: '[[(x + 2)(x + 3) = x^2 + 3x + 2x + 6 = x^2 + 5x + 6]]' },
+        { id: 'distributiva', name: 'Distributiva (chuveirinho)', formula: '[[a(b + c) = ab + ac]]', note: 'Com dois parênteses, faça o <b>chuveirinho</b>: cada termo do primeiro multiplica cada termo do segundo, um de cada vez.', example: '[[(x + 2)(x + 3) = x^2 + 3x + 2x + 6 = x^2 + 5x + 6]]' },
         { id: 'potencias', name: 'Potências de mesma base', formula: '[[x^a * x^b = x^{a + b}]]', note: 'Na <b>multiplicação</b>, somam-se os expoentes. Na soma de termos semelhantes, o expoente não muda.', example: '[[x^2 * x = x^3]] · [[x^3 * x^4 = x^7]]' },
         { id: 'grau', name: 'Grau do polinômio', formula: 'Maior expoente de [[x]] depois de simplificar', note: 'Primeiro junte os semelhantes. Alguns termos podem se anular!', example: '[[x^5 + 2x - x^5]] → sobra [[2x]] → grau 1' }
       ],

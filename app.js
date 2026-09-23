@@ -12,10 +12,9 @@
   const SPLASH_PNG = 'assets/splash_educativo_gaitero_math.png';
   const AVATAR_SRCS = ['assets/avatar.jpg', 'assets/gustavo-avatar.png'];
 
-  // XP por item, uma única vez. Variações valem menos (são treino).
-  const XP = { orig: { solo1: 10, solo: 5, hint: 5, solution: 0 }, var: { solo1: 5, solo: 2, hint: 2, solution: 0 } };
-  // Peso de cada item na nota estimada (só questões originais).
-  const SCORE = { solo1: 1, solo: 0.5, hint: 0.5, solution: 0.25 };
+  // XP por item certo, uma única vez. Com ou sem dica/resolução vale o mesmo (pedido do usuário:
+  // ajuda não pode desanimar). Variações valem menos (são treino).
+  const XP = { orig: 10, var: 5 };
   const reduceMotion = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
 
   const $ = (s, r = document) => r.querySelector(s);
@@ -100,9 +99,9 @@
     if (status === 'correct') {
       r.done = true; r.at = Date.now(); r.lastWrong = false;
       r.outcome = help === 'solution' ? 'solution' : help === 'hint' ? 'hint' : (r.errors === 0 ? 'solo1' : 'solo');
-      gained = XP[isVar ? 'var' : 'orig'][r.outcome];
+      gained = XP[isVar ? 'var' : 'orig'];
       r.xp = gained; S.xp += gained;
-      if (r.outcome !== 'solution') { S.streak++; streakUp = true; if (S.streak > S.best) S.best = S.streak; }
+      S.streak++; streakUp = true; if (S.streak > S.best) S.best = S.streak;
     } else {
       r.errors++; r.lastWrong = true; S.streak = 0;
     }
@@ -117,30 +116,17 @@
     save();
   }
 
-  function itemsDone(exam, q, ver) {
-    const v = version(q, ver || 'orig');
-    return v.items.filter(it => (peek(iid(exam, q, v.id, it)) || {}).done).length;
-  }
-  function variationsDone(exam, q) {
-    return (q.variations || []).filter(v => v.items.every(it => (peek(iid(exam, q, v.id, it)) || {}).done)).length;
-  }
+  // Só três estados: não feita, em andamento e feita (acertou). Não importa se usou dica ou resolução.
   function qStatus(exam, q) {
     const recs = q.items.map(it => peek(iid(exam, q, 'orig', it)));
-    const done = recs.filter(r => r && r.done).length;
-    if (done === q.items.length) {
-      if (recs.some(r => r.outcome === 'solution')) return { key: 'studied' };
-      return { key: 'correct', perfect: recs.every(r => r.outcome === 'solo1') };
-    }
-    if (recs.some(r => r && !r.done && r.lastWrong)) return { key: 'wrong' };
+    if (recs.every(r => r && r.done)) return { key: 'correct' };
     if (recs.some(r => r && (r.attempts || r.hint || r.sol || r.done))) return { key: 'progress' };
     return { key: 'new' };
   }
   const ST = {
-    new: { icon: '', label: 'Não iniciada' },
+    new: { icon: '', label: 'Não feita' },
     progress: { icon: '◐', label: 'Em andamento' },
-    correct: { icon: '✓', label: 'Concluída com acerto' },
-    wrong: { icon: '✗', label: 'Errou — tente de novo' },
-    studied: { icon: '💡', label: 'Revisada pela resolução' }
+    correct: { icon: '✓', label: 'Feita' }
   };
   function examProgress(exam) {
     let doneQ = 0, doneItems = 0, totalItems = 0, touched = false;
@@ -164,7 +150,7 @@
       q.items.forEach(it => {
         const r = peek(iid(exam, q, 'orig', it));
         if (r && r.first !== null) touched = true;
-        if (r && r.done) s += SCORE[r.outcome] || 0;
+        if (r && r.done) s += 1;
       });
       grade += s / q.items.length;
       if (touched) evaluated++;
@@ -197,9 +183,13 @@
   let returnTo = null;       // questão para onde voltar depois do Papel de Cola
   let colaFocus = null;      // regra para destacar no Papel de Cola
   let hintOpenId = null;     // dica aberta (continua aberta ao voltar do Papel de Cola)
+  let simBack = false;       // questão aberta pelo "Tentar fazer novamente" do simulado: o ← volta para o resultado
   function route() {
     const h = current, m1 = /^(p[12])-q(\d+)$/.exec(h), m2 = /^cola(?:-(\w+))?$/.exec(h);
     if (h === 'p1' || h === 'p2') return { name: 'exam', exam: h };
+    if (h === 'simulado') return { name: 'sim' };
+    if (h === 'simulado-q') return { name: 'simq' };
+    if (h === 'simulado-fim') return { name: 'simend' };
     if (m1) return { name: 'question', exam: m1[1], n: +m1[2] };
     if (m2) return { name: 'cola', block: m2[1] || null };
     return { name: 'home' };
@@ -219,7 +209,8 @@
   const view = () => $('#view');
   function render() {
     const r = route();
-    document.body.classList.toggle('immersive', r.name === 'question');
+    document.body.classList.toggle('immersive', r.name === 'question' || r.name === 'simq');
+    if (r.name !== 'question') simBack = false;
     $$('#mainnav [data-nav]').forEach(a => {
       const on = (r.name === 'home' && a.dataset.nav === 'home') || (a.dataset.nav === r.exam && r.name === 'exam') || (r.name === 'cola' && a.dataset.nav === 'cola');
       if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
@@ -228,6 +219,9 @@
     if (r.name === 'home') renderHome();
     else if (r.name === 'exam') renderExam(r.exam);
     else if (r.name === 'cola') renderCola(r.block);
+    else if (r.name === 'sim') renderSimSetup();
+    else if (r.name === 'simq') renderSimQuestion();
+    else if (r.name === 'simend') renderSimEnd();
     else renderQuestion(r.exam, r.n);
     updateTop();
     paintAvatars();
@@ -254,6 +248,12 @@
       '<span class="tile-big" aria-hidden="true">📄</span>' +
       '<span class="tile-sub" aria-hidden="true">Cola</span></a>';
   }
+  function simTile() {
+    const last = S.sim && S.sim.done ? simGrade(S.sim) : null;
+    return '<a class="tile tile-sim" href="#simulado" data-go="simulado" aria-label="Simulado: 5 questões sorteadas' + (last != null ? ', última nota ' + last : '') + '">' +
+      '<span class="tile-sim-ico" aria-hidden="true">📝</span>' +
+      '<span class="tile-sim-txt" aria-hidden="true"><b>Simulado</b><span>' + (S.sim && !S.sim.done ? 'Continuar: questão ' + (S.sim.i + 1) + ' de ' + SIM_N : last != null ? 'Última nota: ' + last : '5 questões sorteadas') + '</span></span></a>';
+  }
   function gradeCell(exam) {
     const e = estimate(exam), txt = L.brNum(Math.round(e.grade * 10) / 10, 1);
     return '<div class="gcell gcell-' + exam.id + '" aria-label="' + exam.title + ': nota estimada ' + (e.evaluated ? txt : 'ainda sem dados') + ', ' + e.evaluated + ' de 10 questões feitas">' +
@@ -264,7 +264,7 @@
   const HOW_HTML = '<ul class="how-list">' +
     '<li>É só uma estimativa para orientar o estudo — <b>não é a nota oficial</b>.</li>' +
     '<li>Cada questão vale 1 ponto (10 questões = nota 10). Questões com itens a, b, c… dividem o ponto igualmente.</li>' +
-    '<li>Acerto de primeira, sem ajuda: 100% do item. Acerto depois de errar, ou usando a 💡 dica: 50%. Acerto depois de ver a ❔ resolução: 25%.</li>' +
+    '<li>Item certo vale o item inteiro, com ou sem 💡 dica ou ❔ resolução. Pedir ajuda faz parte de aprender!</li>' +
     '<li>Item não respondido ou ainda errado vale zero: as questões que faltam contam zero até você responder.</li>' +
     '<li>Só as questões originais das provas contam. As 🔀 variações são treino extra.</li></ul>';
   function renderHome() {
@@ -277,7 +277,7 @@
       stat('🎯', acc.total ? Math.round(acc.rate * 100) + '%' : '—', 'acerto') +
       stat('⭐', S.xp, 'XP') +
       '</div>' +
-      '<nav class="tiles" aria-label="Estudar">' + BANK.exams.map(examTile).join('') + colaTile() + '</nav>' +
+      '<nav class="tiles" aria-label="Estudar">' + BANK.exams.map(examTile).join('') + colaTile() + simTile() + '</nav>' +
       '<section class="grade" aria-labelledby="grade-title">' +
       '<div class="grade-head"><h2 id="grade-title">Nota estimada</h2>' +
       '<button class="info-btn" data-act="how" aria-label="Como a nota estimada é calculada">?</button></div>' +
@@ -287,40 +287,182 @@
   }
 
   /* ============ Prova (seleção de questões) ============ */
-  const ST_SHORT = { new: 'Nova', progress: 'Em andamento', correct: 'Acertou', wrong: 'Errou', studied: 'Com resolução' };
-  function statusChip(key) {
-    return '<span class="st-chip st-' + key + '">' + (ST[key].icon ? '<span aria-hidden="true">' + ST[key].icon + '</span> ' : '') + ST_SHORT[key] + '</span>';
-  }
-  // Começo do enunciado, como está no PDF. "Calcular:" sozinho diz pouco, então junta o 1º item.
+  // Começo do enunciado, como está no PDF, só as primeiras palavras (letra maior, menos texto).
+  // "Calcule:" sozinho diz pouco, então junta o 1º item.
+  const QSTART_WORDS = 6;
   function qStart(q) {
     let s = q.prompt;
     const plain = s.replace(/<[^>]+>|\[\[|\]\]/g, '');
-    if (plain.length < 20 && q.items[0] && q.items[0].prompt) s += ' ' + (q.items[0].label ? q.items[0].label + ' ' : '') + q.items[0].prompt + ' …';
-    return fmt(s);
+    if (plain.length < 20 && q.items[0] && q.items[0].prompt) return fmt(s + ' ' + (q.items[0].label ? q.items[0].label + ' ' : '') + q.items[0].prompt + ' …');
+    // conta palavras sem partir uma conta [[...]] no meio
+    const toks = s.split(/\s+/), out = [];
+    let depth = 0, words = 0;
+    for (const t of toks) {
+      out.push(t);
+      depth += (t.split('[[').length - 1) - (t.split(']]').length - 1);
+      if (depth <= 0 && ++words >= QSTART_WORDS) break;
+    }
+    if (out.length === toks.length) return fmt(s);
+    return fmt(out.join(' ').replace(/[,.:;]$/, '') + '…');
   }
   function renderExam(id) {
     const exam = examById(id), p = examProgress(exam);
     const cards = exam.questions.map(q => {
-      const st = qStatus(exam, q), multi = q.items.length > 1, d = itemsDone(exam, q), vd = variationsDone(exam, q);
-      const aria = 'Questão ' + q.n + ' (' + q.skill + '): ' + ST[st.key].label + (multi ? ', ' + d + ' de ' + q.items.length + ' itens concluídos' : '') + (vd ? ', ' + vd + ' variações feitas' : '');
-      return '<a class="qcard st-' + st.key + '" href="#' + qid(exam, q) + '" data-go="' + qid(exam, q) + '" aria-label="' + aria + '">' +
-        '<span class="qc-side" aria-hidden="true"><span class="qc-num">' + pad(q.n) + (ST[st.key].icon ? '<span class="qc-icon">' + ST[st.key].icon + '</span>' : '') + '</span>' +
-        (multi ? '<span class="qc-items">' + d + '/' + q.items.length + '</span>' : '') + '</span>' +
+      const st = qStatus(exam, q);
+      return '<a class="qcard st-' + st.key + '" href="#' + qid(exam, q) + '" data-go="' + qid(exam, q) + '" aria-label="Questão ' + q.n + ' (' + q.skill + '): ' + ST[st.key].label + '">' +
+        '<span class="qc-side" aria-hidden="true"><span class="qc-num">' + pad(q.n) + (ST[st.key].icon ? '<span class="qc-icon">' + ST[st.key].icon + '</span>' : '') + '</span></span>' +
         '<span class="qc-text" aria-hidden="true">' + qStart(q) + '</span>' +
-        (vd || st.perfect ? '<span class="qc-extra" aria-hidden="true">' + (st.perfect ? '★' : '') + (vd ? ' 🔀' + vd : '') + '</span>' : '') +
         '</a>';
     }).join('');
     view().innerHTML =
       '<section class="exam exam-' + exam.id + '">' +
       '<div class="exam-head"><div class="eh-top"><span class="exam-badge big">' + exam.title + '</span>' +
       '<div class="eh-text"><h1>' + exam.name + '</h1><p class="exam-meta">' + exam.meta + '</p></div></div>' +
-      '<p class="exam-content">' + exam.content + '</p>' +
       '<div class="exam-prog"><span class="bar" aria-hidden="true"><i style="width:' + (p.doneItems / p.totalItems * 100).toFixed(1) + '%"></i></span>' +
-      '<span>' + p.doneQ + ' de 10 questões · ' + p.doneItems + ' de ' + p.totalItems + ' itens</span></div></div>' +
+      '<span>' + p.doneQ + ' de 10 questões</span></div></div>' +
       '<h2 class="sr-only">Escolha uma questão</h2>' +
       '<div class="qcards">' + cards + '</div>' +
-      '<div class="legend" aria-label="Legenda">' + ['new', 'progress', 'correct', 'wrong', 'studied'].map(statusChip).join('') + '</div>' +
       '</section>';
+  }
+
+  /* ============ Simulado ============ */
+  // 5 questões sorteadas (de preferência variações), sem dica e sem resolução. Só no fim ele vê o que
+  // acertou e a nota (0 a 10). Tocar num número abre a resolução; "Tentar fazer novamente" traz outra
+  // variação da mesma questão, no modo treino. Questão com itens (a, b, c…): sorteia um item só.
+  const SIM_N = 5;
+  const SIM_SCOPES = { p1: 'P1', p2: 'P2', both: 'P1 + P2' };
+  const simGrade = sim => Math.round(sim.ok.filter(Boolean).length / SIM_N * 100) / 10;
+  function shuffle(a) {
+    for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t; }
+    return a;
+  }
+  function simEntry(sim, i) {
+    const s = sim.list[i], exam = examById(s.exam), q = exam.questions[s.n - 1], ver = version(q, s.ver);
+    return { s, exam, q, ver, idx: Math.max(0, ver.items.findIndex(it => it.key === s.key)) };
+  }
+  function startSim(scope) {
+    const pool = [];
+    (scope === 'both' ? BANK.exams : [examById(scope)]).forEach(e => e.questions.forEach(q => pool.push({ e, q })));
+    const list = shuffle(pool).slice(0, SIM_N).map(({ e, q }) => {
+      const vars = q.variations || [], ver = vars.length ? pick(vars).id : 'orig';
+      return { exam: e.id, n: q.n, ver, key: pick(version(q, ver).items).key };
+    });
+    Object.keys(S.drafts).forEach(k => { if (k.indexOf('sim.') === 0) delete S.drafts[k]; });
+    S.sim = { scope, list, i: 0, ans: [], ok: [], done: false, at: Date.now() };
+    save();
+    go('simulado-q');
+  }
+  function renderSimSetup() {
+    const sim = S.sim, going = sim && !sim.done, lastG = sim && sim.done ? simGrade(sim) : null;
+    view().innerHTML = '<section class="sim-setup">' +
+      '<h1><span aria-hidden="true">📝</span> Simulado</h1>' +
+      '<p class="sim-lead">' + SIM_N + ' questões sorteadas, <b>sem dica e sem resolução</b>. Só no final você descobre o que acertou e a sua nota.</p>' +
+      (going ? '<button class="btn btn-primary btn-block" data-act="sim-continue">CONTINUAR SIMULADO (' + (sim.i + 1) + '/' + SIM_N + ')</button>' : '') +
+      '<h2 class="sim-h2">' + (going ? 'Ou comece outro. ' : '') + 'Sortear questões de qual prova?</h2>' +
+      '<div class="sim-scopes">' + Object.keys(SIM_SCOPES).map(k => '<button class="sim-scope sim-' + k + '" data-act="sim-start" data-scope="' + k + '">' + SIM_SCOPES[k] + '</button>').join('') + '</div>' +
+      (lastG != null ? '<button class="link-btn sim-last" data-go="simulado-fim">Ver o último resultado (nota ' + L.brNum(lastG) + ')</button>' : '') +
+      '</section>';
+  }
+  function renderSimQuestion() {
+    const sim = S.sim;
+    if (!sim || sim.done) { go(sim && sim.done ? 'simulado-fim' : 'simulado'); return; }
+    const E = simEntry(sim, sim.i);
+    QS = { exam: E.exam, q: E.q, key: qid(E.exam, E.q), ver: E.ver, idx: E.idx, sim: true, feedback: null, sel: null, multi: null, solStep: 0 };
+    const item = curItem(), id = curId(), lastQ = sim.i === SIM_N - 1;
+    view().innerHTML = '<section class="qscreen sim-q">' +
+      '<header class="qhead">' +
+      '<a class="icon-btn" href="#simulado" data-go="simulado" aria-label="Sair do simulado (dá para continuar depois)">✕</a>' +
+      '<div class="qhead-mid"><div class="qhead-title">Simulado · ' + SIM_SCOPES[sim.scope] + '</div>' +
+      '<div class="bar bar-sm" role="progressbar" aria-label="Progresso do simulado" aria-valuemin="0" aria-valuemax="' + SIM_N + '" aria-valuenow="' + sim.i + '"><i style="width:' + (sim.i / SIM_N * 100) + '%"></i></div></div>' +
+      '<span class="chip sim-count" aria-label="Questão ' + (sim.i + 1) + ' de ' + SIM_N + '"><b>' + (sim.i + 1) + '</b>/' + SIM_N + '</span>' +
+      '</header>' +
+      '<div class="qbody">' +
+      '<article class="statement">' +
+      '<div class="st-top"><div class="st-skill">Questão ' + (sim.i + 1) + ' de ' + SIM_N + (lastQ ? ' · <b>a última!</b>' : '') + '</div></div>' +
+      '<p class="st-prompt">' + fmt(E.ver.prompt) + '</p>' +
+      (E.ver.table ? tableHTML(E.ver.table) : '') +
+      (E.ver.figure ? '<div class="st-fig">' + E.ver.figure + '</div>' : '') +
+      (E.ver.note ? '<p class="st-note">' + E.ver.note + '</p>' : '') +
+      (item.prompt ? '<div class="st-item"><span class="st-expr">' + fmt(item.prompt) + '</span></div>' : '') +
+      '</article>' +
+      '<div class="answer" id="answer">' + fieldsHTML(item, id) + '</div>' +
+      '<div class="msg" id="msg" role="status" aria-live="polite"></div>' +
+      '</div>' +
+      '<footer class="qfoot" id="qfoot"><button class="btn btn-primary btn-block" data-act="sim-next">' + (lastQ ? 'FINALIZAR SIMULADO' : 'PRÓXIMA QUESTÃO →') + '</button></footer>' +
+      '</section>';
+    const a = item.answer, d = draftOf(id);
+    QS.sel = a.type === 'choice' ? d : null;
+    QS.multi = a.type === 'multiSelect' ? new Set(d || []) : null;
+    updatePreview();
+  }
+  // Guarda a resposta sem dizer se está certa: o resultado só aparece no fim.
+  function simNext() {
+    const sim = S.sim;
+    if (!sim || sim.done || !QS || !QS.sim) return;
+    const item = curItem(), ans = collect(), res = L.validate(item, ans);
+    if (res.status === 'empty' || res.status === 'invalid') {
+      showMsg(res.status === 'empty' ? 'Responda antes de ir para a próxima 😉' : fmt(res.message), res.status === 'empty' ? 'info' : 'warn');
+      const f = $('#answer .field'); if (f && res.status === 'empty' && !f.value) f.focus();
+      return;
+    }
+    S.drafts[curId()] = ans;
+    markStudy(curId());
+    sim.ans[sim.i] = ans;
+    sim.ok[sim.i] = res.status === 'correct';
+    sim.i++;
+    if (sim.i >= SIM_N) {
+      sim.done = true; save();
+      go('simulado-fim');
+      if (simGrade(sim) >= 8) { beep('ok'); confetti(); }
+      return;
+    }
+    save();
+    renderSimQuestion();
+    window.scrollTo(0, 0);
+  }
+  function renderSimEnd() {
+    const sim = S.sim;
+    if (!sim || !sim.done) { go('simulado'); return; }
+    const n = sim.ok.filter(Boolean).length, gt = L.brNum(simGrade(sim));
+    view().innerHTML = '<section class="sim-end">' +
+      '<p class="sim-if">Se a prova fosse hoje, você tiraria</p>' +
+      '<div class="sim-grade ' + (simGrade(sim) >= 6 ? 'g-ok' : 'g-low') + '">' + gt + '</div>' +
+      '<p class="sim-why">Você acertou <b>' + n + ' de ' + SIM_N + '</b> questões, então sua nota seria <b>' + gt + '</b>.</p>' +
+      '<div class="sim-dots">' + sim.list.map((s, i) => '<button class="sim-dot ' + (sim.ok[i] ? 'ok' : 'bad') + '" data-act="sim-open" data-i="' + i + '" aria-label="Questão ' + (i + 1) + ': ' + (sim.ok[i] ? 'acertou' : 'errou') + '. Ver a resolução">' + (i + 1) + '</button>').join('') + '</div>' +
+      '<p class="sim-tap">Toque num número para ver a resolução.</p>' +
+      '<div class="sim-actions"><button class="btn btn-primary btn-block" data-go="simulado">FAZER OUTRO SIMULADO</button>' +
+      '<button class="btn btn-ghost btn-block" data-go="">VOLTAR AO INÍCIO</button></div>' +
+      '</section>';
+  }
+  // Resposta que ele deu, em texto (para o quadro da resolução).
+  function ansText(item, ans) {
+    const a = item.answer;
+    if (ans == null || ans === '') return '—';
+    if (a.type === 'choice') { const k = a.options.findIndex(o => o.id === ans); return k < 0 ? '—' : 'alternativa ' + 'ABCDEF'[k] + (a.layout === 'figs' ? '' : ': ' + fmt(a.options[k].html)); }
+    if (a.type === 'multiSelect') { const opts = a.options.filter(o => ans.indexOf(o.id) >= 0); return opts.length ? opts.map(o => o.html).join(' + ') : '—'; }
+    if (Array.isArray(ans)) return ans.map(v => L.esc(String(v))).join(' · ');
+    return L.esc(String(ans));
+  }
+  function simOpen(i) {
+    const sim = S.sim, E = simEntry(sim, i), item = E.ver.items[E.idx], ok = sim.ok[i];
+    QS = { exam: E.exam, q: E.q, key: qid(E.exam, E.q), ver: E.ver, idx: E.idx, sim: true, simI: i, feedback: null, sel: null, multi: null, solStep: 0 };
+    const banner = '<div class="sim-banner ' + (ok ? 'ok' : 'bad') + '">' + (ok ? '✓ Você acertou! Sua resposta: ' : '✗ Sua resposta: ') + '<b>' + ansText(item, sim.ans[i]) + '</b>' +
+      (ok ? '' : '<br>Resposta certa: <b>' + fmt(item.final) + '</b>') +
+      '<button class="link-btn sim-retry-link" data-act="sim-retry">🔀 Tentar fazer novamente</button></div>';
+    openSolution({ where: 'Simulado · Questão ' + (i + 1) + ' (' + E.exam.title + ' · Questão ' + E.q.n + ')', banner });
+  }
+  // Outra variação da mesma questão (nunca a que caiu no simulado), no modo treino.
+  function simRetry() {
+    const s = S.sim.list[QS.simI], exam = examById(s.exam), q = exam.questions[s.n - 1], key = qid(exam, q);
+    const others = (q.variations || []).filter(v => v.id !== s.ver);
+    const next = others.length ? pick(others).id : 'orig';
+    S.ver[key] = next;
+    S.lastItem[key + '.' + next] = s.key;
+    save();
+    closeSheets();
+    simBack = true;
+    go(key);
+    toast('🔀 Uma variação nova dessa questão. Agora com 💡 dica e ❔ resolução!');
   }
 
   /* ============ Papel de Cola ============ */
@@ -367,7 +509,8 @@
   /* ============ Questão ============ */
   let QS = null;
   const curItem = () => QS.ver.items[QS.idx];
-  const curId = () => iid(QS.exam, QS.q, QS.ver.id, curItem());
+  // No simulado as respostas ficam separadas do treino (prefixo "sim."): nada vem preenchido.
+  const curId = () => (QS.sim ? 'sim.' : '') + iid(QS.exam, QS.q, QS.ver.id, curItem());
 
   function renderQuestion(examId, n) {
     const exam = examById(examId), q = exam && exam.questions[n - 1];
@@ -472,8 +615,7 @@
       it.key + (icon ? '<span aria-hidden="true">' + icon + '</span>' : '') + '</button>';
   }
   function reviewBanner(r) {
-    const how = { solo1: 'de primeira', solo: 'depois de tentar de novo', hint: 'com a dica', solution: 'depois de ver a resolução' }[r.outcome] || '';
-    return '<div class="banner banner-ok"><span aria-hidden="true">✓</span> Já acertou ' + how + (r.xp ? ' (+' + r.xp + ' XP)' : '') + '. Refazer é treino: não vale XP.</div>';
+    return '<div class="banner banner-ok"><span aria-hidden="true">✓</span> Já acertou' + (r.xp ? ' (+' + r.xp + ' XP)' : '') + '. Refazer é treino: não vale XP.</div>';
   }
   function hintPanel(item) {
     const rules = item.hint.rules.map(id => FORM.rules[id]).filter(Boolean);
@@ -497,7 +639,8 @@
     view().innerHTML =
       '<section class="qscreen">' +
       '<header class="qhead">' +
-      '<a class="icon-btn" href="#' + exam.id + '" data-go="' + exam.id + '" aria-label="Voltar para a ' + exam.title + '">←</a>' +
+      (simBack ? '<a class="icon-btn" href="#simulado-fim" data-go="simulado-fim" aria-label="Voltar para o resultado do simulado">←</a>'
+        : '<a class="icon-btn" href="#' + exam.id + '" data-go="' + exam.id + '" aria-label="Voltar para a ' + exam.title + '">←</a>') +
       '<div class="qhead-mid"><div class="qhead-title">' + exam.title + ' · Questão ' + q.n + (multi ? ' · item ' + item.key : '') + '</div>' +
       '<div class="bar bar-sm" role="progressbar" aria-label="Progresso na ' + exam.title + '" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + Math.round(examItemsProgress() * 100) + '"><i id="qprog" style="width:' + (examItemsProgress() * 100).toFixed(1) + '%"></i></div></div>' +
       '<span class="chip chip-streak" title="Sequência de acertos" aria-label="Sequência de acertos"><span aria-hidden="true">🔥</span> <b class="js-streak">' + S.streak + '</b></span>' +
@@ -581,9 +724,9 @@
         solo1: 'Mandou muito bem! Acertou de primeira.',
         solo: 'Isso aí! Errar faz parte de aprender.',
         hint: 'Boa! Usou a dica e chegou lá.',
-        solution: 'Prática com a resolução concluída. Depois tente uma 🔀 variação sozinho!'
+        solution: 'Boa! Estudou a resolução e acertou. Que tal uma 🔀 variação agora?'
       };
-      const title = fb.review ? 'Certinho de novo! ✓' : (fb.outcome === 'solution' ? 'Isso aí! ✓' : pick(['BOA, GAITERO! 🎉', 'MANDOU BEM, GAITERO! 🎉', 'É ISSO AÍ, GAITERO! 🎉']));
+      const title = fb.review ? 'Certinho de novo! ✓' : pick(['BOA, GAITERO! 🎉', 'MANDOU BEM, GAITERO! 🎉', 'É ISSO AÍ, GAITERO! 🎉']);
       const sub = fb.review ? 'Modo revisão: este item já estava concluído, então não vale XP de novo.' : subs[fb.outcome] + (fb.streakUp && S.streak > 1 ? ' 🔥 ' + S.streak + ' acertos seguidos!' : '');
       return '<div class="fb fb-ok" role="alert"><div class="fb-head"><span class="fb-ico" aria-hidden="true">✓</span><div class="fb-text"><div class="fb-title">' + title + '</div><div class="fb-sub">' + sub + '</div></div>' +
         (fb.gained ? '<span class="fb-xp">+' + fb.gained + ' XP</span>' : '') + '</div>' +
@@ -645,8 +788,10 @@
       { t: 'Conferindo se faz sentido', b: s.check, cls: 'check' }
     ].filter(Boolean);
   }
-  function openSolution() {
-    registerHelp(curId(), 'sol');
+  // extra (simulado): { where, banner } — de onde veio a questão e o quadro "sua resposta / resposta certa".
+  function openSolution(extra) {
+    extra = extra && extra.where ? extra : null;
+    if (!QS.sim) registerHelp(curId(), 'sol');
     QS.solStep = 0;
     const item = curItem(), { exam, q, ver } = QS;
     const sheet = document.createElement('div');
@@ -655,9 +800,9 @@
     sheet.setAttribute('aria-modal', 'true');
     sheet.setAttribute('aria-labelledby', 'sol-title');
     sheet.innerHTML = '<div class="sheet-card">' +
-      '<header class="sheet-head"><div><h2 id="sol-title">❔ Resolução</h2><span class="sheet-where">' + exam.title + ' · Questão ' + q.n + (item.label ? ' · item ' + item.key : '') + (ver.id !== 'orig' ? ' · variação' : '') + '</span></div>' +
+      '<header class="sheet-head"><div><h2 id="sol-title">❔ Resolução</h2><span class="sheet-where">' + (extra ? extra.where : exam.title + ' · Questão ' + q.n + (item.label ? ' · item ' + item.key : '') + (ver.id !== 'orig' ? ' · variação' : '')) + '</span></div>' +
       '<button class="icon-btn" data-act="sheet-close" aria-label="Fechar resolução">✕</button></header>' +
-      '<div class="sheet-body" id="sol-body"><div class="sol-q">' + fmt(ver.prompt) + (item.prompt ? ' <span class="sol-item">' + (item.label || '') + ' ' + fmt(item.prompt) + '</span>' : '') + '</div><ol class="steps" id="sol-steps"></ol></div>' +
+      '<div class="sheet-body" id="sol-body">' + (extra ? extra.banner : '') + '<div class="sol-q">' + fmt(ver.prompt) + (item.prompt ? ' <span class="sol-item">' + (item.label || '') + ' ' + fmt(item.prompt) + '</span>' : '') + '</div><ol class="steps" id="sol-steps"></ol></div>' +
       '<footer class="sheet-foot" id="sol-foot"></footer></div>';
     $('#sheet-root').appendChild(sheet);
     document.body.classList.add('no-scroll');
@@ -678,7 +823,8 @@
     const last = QS.solStep >= steps.length - 1;
     const done = (peek(curId()) || {}).done;
     $('#sol-foot').innerHTML = last
-      ? '<button class="btn btn-primary btn-block" data-act="' + (done ? 'sheet-close' : 'sheet-try') + '">' + (done ? 'FECHAR' : 'TENTAR AGORA') + '</button>'
+      ? (QS.sim ? '<button class="btn btn-ghost" data-act="sheet-close">FECHAR</button><button class="btn btn-primary" data-act="sim-retry">TENTAR FAZER NOVAMENTE</button>'
+        : '<button class="btn btn-primary btn-block" data-act="' + (done ? 'sheet-close' : 'sheet-try') + '">' + (done ? 'FECHAR' : 'TENTAR AGORA') + '</button>')
       : '<button class="link-btn" data-act="steps-all">Mostrar todos os passos</button><button class="btn btn-blue" data-act="step-next">PRÓXIMO PASSO</button>';
     const firstNew = ol.children[from];
     if (firstNew && from > 0) firstNew.scrollIntoView({ block: 'start', behavior: reduceMotion ? 'auto' : 'smooth' });
@@ -687,16 +833,8 @@
     $$('#sheet-root > *').forEach(el => el.remove());
     document.body.classList.remove('no-scroll');
   }
-  function askSolution() {
-    const r = peek(curId());
-    if (r && r.done) { openSolution(); return; }
-    modal({
-      title: 'Quer ver como resolver? 👀',
-      text: 'Você pode tentar sozinho primeiro e ganhar mais XP! Se abrir a resolução, este item conta como estudado com ajuda.',
-      primary: 'VOU TENTAR SOZINHO', secondary: 'VER RESOLUÇÃO',
-      onSecondary: openSolution
-    });
-  }
+  // Abre direto: ver a resolução não tira ponto, então não precisa perguntar.
+  function askSolution() { openSolution(); }
 
   /* ---------- Modal genérico ---------- */
   function modal(o) {
@@ -855,7 +993,16 @@
       onSecondary: () => { S = blank(); save(); hintOpenId = null; render(); toast('Progresso zerado. Bora começar de novo! 🚀'); }
     }),
     settings: () => openSettings(),
-    how: () => showHow()
+    how: () => showHow(),
+    'sim-start': el => {
+      const sc = el.dataset.scope;
+      if (S.sim && !S.sim.done && S.sim.i > 0) modal({ title: 'Começar outro simulado?', text: 'O simulado que você começou vai ser descartado.', primary: 'CANCELAR', secondary: 'COMEÇAR OUTRO', onSecondary: () => startSim(sc) });
+      else startSim(sc);
+    },
+    'sim-continue': () => go('simulado-q'),
+    'sim-next': simNext,
+    'sim-open': el => simOpen(+el.dataset.i),
+    'sim-retry': simRetry
   };
 
   /* ---------- Opções (⚙ no topo) ---------- */
@@ -918,6 +1065,7 @@
       if (m) { m.remove(); if (!$('#sheet-root').children.length) document.body.classList.remove('no-scroll'); } else closeSheets();
       return;
     }
+    if (e.key === 'Enter' && route().name === 'simq' && !$('#sheet-root').children.length && e.target.matches && e.target.matches('#answer .field')) { e.preventDefault(); simNext(); return; }
     if (e.key !== 'Enter' || !QS || route().name !== 'question') return;
     if ($('#sheet-root').children.length) return;
     if (e.target.matches && e.target.matches('#answer .field')) { e.preventDefault(); if (!QS.feedback) doCheck(); else if (QS.feedback.ok) doContinue(); else retry(); }

@@ -162,26 +162,7 @@
 
   // Vírgula pulando de casa em casa. digits sem vírgula; from/to = quantos algarismos ficam antes da vírgula.
   // showLate: algarismos que aparecem no fim (zeros que completam); hideLate: somem no fim (zero da frente).
-  FIG.comma = function (o) {
-    var d = o.delay || 0, n = o.digits.length, SL = 24, L = 14, s = '';
-    var X = function (i) { return L + i * SL + SL / 2; };
-    var CX = function (pos) { return L + pos * SL + 1; };
-    var st = function (delay) { return ' style="animation-delay:' + (d + delay) + 's"'; };
-    o.digits.split('').forEach(function (ch, i) {
-      var late = (o.showLate || []).indexOf(i) >= 0, gone = (o.hideLate || []).indexOf(i) >= 0;
-      s += '<text class="fg-cm-dig' + (late ? ' anim-fade' : gone ? ' anim-fadeout' : '') + '" x="' + X(i) + '" y="42"' + (late || gone ? st(1.7) : '') + '>' + ch + '</text>';
-    });
-    var pctX = L + n * SL + 6;
-    if (o.pctStart) s += '<text class="fg-cm-pct anim-fadeout" x="' + pctX + '" y="42"' + st(0.2) + '>%</text>';
-    var comma = '<text class="fg-cm-comma comma-hop" x="' + CX(o.from) + '" y="42" style="--dx:' + ((o.to - o.from) * SL) + 'px;animation-delay:' + (d + 0.6) + 's">,</text>';
-    if (o.from === n) comma = '<g class="anim-fade"' + st(0.3) + '>' + comma + '</g>';
-    if (o.to === n) comma = '<g class="anim-fadeout"' + st(1.7) + '>' + comma + '</g>';
-    s += comma;
-    if (o.pctEnd) s += '<text class="fg-cm-pct anim-fade" x="' + pctX + '" y="42"' + st(1.9) + '>%</text>';
-    var W = pctX + 30;
-    if (o.result) { s += '<text class="fg-cm-res anim-fade" x="' + (pctX + 30) + '" y="42"' + st(2.1) + '>' + o.result + '</text>'; W += o.result.length * 14 + 6; }
-    return '<svg class="fig fig-comma" viewBox="0 0 ' + W + ' 56" role="img" aria-label="' + (o.aria || '') + '">' + s + '</svg>';
-  };
+  FIG.comma = window.GM_CONTAS.commaFig;   // a vírgula pulando casas mora em contas.js
   // 30% → 0,3: a vírgula sai do fim do número e anda duas casas para a esquerda.
   FIG.pctToDec = function (p, delay) {
     var digits = String(p), late = [];
@@ -425,11 +406,11 @@
   };
 
   /* ---------- Resoluções montadas por função (usadas pela original e pelas variações) ---------- */
-  var STEPS = {};
+  var STEPS = {}, CT = window.GM_CONTAS;   // CT: contas da escola (chave, conta armada, vírgula, chuveirinho)
   // Volume do paralelepípedo: altura h, comprimento = k × largura, volume V. Resolução em etapas pequenas,
   // com a caixa em 3D sendo preenchida a cada passo.
   STEPS.volume = function (h, k, V) {
-    var kh = k * h, L2 = V / kh, Lw = Math.sqrt(L2), C = k * Lw;
+    var kh = k * h, L2 = V / kh, Lw = Math.sqrt(L2), Cm = k * Lw;
     var box = function (o) {
       return FIG.box3d({ h: o.h || h + ' cm', w: o.w || 'L', c: o.c || 'C', v: o.v, hl: o.hl });
     };
@@ -445,14 +426,17 @@
         { t: 'Descobrindo a largura L', b: 'Agora é só resolver, uma conta de cada vez:<div class="calc calc-lines">' +
             '<span>[[' + h + ' * ' + k + 'L * L = ' + V + ']]</span>' +
             '<span>[[' + kh + ' * L * L = ' + V + ']] <small>← ' + h + ' vezes ' + k + ' dá ' + kh + '</small></span>' +
-            '<span>[[L * L = ' + V + ' ÷ ' + kh + ']] <small>← o ' + kh + ' que multiplica muda de lado e divide</small></span>' +
+            '<span>[[L * L = frac{' + V + '}{' + kh + '}]] <small>← o ' + kh + ' que multiplica muda de lado e divide</small></span>' +
+            '</div>Falta fazer a divisão:' }
+      ].concat(CT.divide(V, kh).steps).concat([
+        { t: 'A largura L', b: 'A divisão deu ' + L2 + ':<div class="calc calc-lines">' +
             '<span>[[L * L = ' + L2 + ']]</span>' +
             '<span>[[L = ' + Lw + ']] <small>← qual número vezes ele mesmo dá ' + L2 + '? [[' + Lw + ' * ' + Lw + ' = ' + L2 + ']]</small></span>' +
             '</div>A largura é <b>' + Lw + ' cm</b>.', fig: box({ v: vol, c: k + 'L', w: Lw + ' cm', hl: ['w'] }) },
-        { t: 'Atenção: ele pediu o comprimento!', cls: 'concept', b: 'Perceba que a questão pediu o <b>comprimento</b>, e não a largura. A gente sabe que o comprimento é ' + k + ' vezes a largura. Então é só fazer ' + k + ' vezes o [[L]]:<div class="calc calc-lines"><span>[[C = ' + k + 'L]]</span><span>[[C = ' + k + ' * ' + Lw + ']]</span><span>[[C = ' + C + ']]</span></div>', fig: box({ v: vol, w: Lw + ' cm', c: C + ' cm', hl: ['c'] }) },
-        { t: 'Resposta final', cls: 'final', b: 'Pronto! O comprimento mede <b>' + C + ' cm</b>.', fig: box({ v: vol, w: Lw + ' cm', c: C + ' cm' }) },
-        { t: 'Conferindo se faz sentido', cls: 'check', b: 'Volume = altura · largura · comprimento:<div class="calc">[[' + h + ' * ' + Lw + ' * ' + C + ' = ' + V + ']] cm³ ✓</div>E ' + C + ' é mesmo ' + k + ' vezes ' + Lw + ' ✓.' }
-      ]
+        { t: 'Atenção: ele pediu o comprimento!', cls: 'concept', b: 'Perceba que a questão pediu o <b>comprimento</b>, e não a largura. A gente sabe que o comprimento é ' + k + ' vezes a largura. Então é só fazer ' + k + ' vezes o [[L]]:<div class="calc calc-lines"><span>[[C = ' + k + 'L]]</span><span>[[C = ' + k + ' * ' + Lw + ']]</span><span>[[C = ' + Cm + ']]</span></div>', fig: box({ v: vol, w: Lw + ' cm', c: Cm + ' cm', hl: ['c'] }) },
+        { t: 'Resposta final', cls: 'final', b: 'Pronto! O comprimento mede <b>' + Cm + ' cm</b>.', fig: box({ v: vol, w: Lw + ' cm', c: Cm + ' cm' }) },
+        { t: 'Conferindo se faz sentido', cls: 'check', b: 'Volume = altura · largura · comprimento:<div class="calc">[[' + h + ' * ' + Lw + ' * ' + Cm + ' = ' + V + ']] cm³ ✓</div>E ' + Cm + ' é mesmo ' + k + ' vezes ' + Lw + ' ✓.' }
+      ])
     };
   };
 
@@ -473,21 +457,84 @@
       : 'Três números <b>' + o.kind + ' consecutivos</b> são ' + o.kind + ' que vêm um atrás do outro, pulando de <b>2 em 2</b> (no meio sempre fica um número ' + (o.kind === 'ímpares' ? 'par' : 'ímpar') + '). Por exemplo:';
     var who = cons ? 'dos três números consecutivos' : 'de três números inteiros consecutivos ' + o.kind;
     return {
-      intro: {
-        t: cons ? 'Números consecutivos' : 'Números ' + o.kind + ' consecutivos',
-        b: intro + '<div class="nbox-groups">' + examples.map(function (t) { return bx(t); }).join('') + '</div>E assim vai. Então eles podem ser escritos assim:' + forms +
-          (cons ? '' : '<small class="nbox-note">(com [[x]] ' + (o.kind === 'ímpares' ? 'ímpar' : 'par') + ')</small>') + '<br>Todos os ' + (cons ? 'números consecutivos' : o.kind + ' consecutivos') + ' podem ser escritos dessa forma.'
-      },
-      ask: 'A questão nos fala que a <b>soma</b> ' + who + ' é igual a <b>' + S + '</b>. Quais são esses números?',
-      data: 'Os números são:' + forms + '<br>Somados, eles dão <b>' + S + '</b>.',
-      s1: 'Montamos a conta da soma:<div class="calc">[[x + x + ' + d + ' + x + ' + 2 * d + ' = ' + S + ']]</div>Juntamos os [[x]] ([[x + x + x = 3x]]) e juntamos os números ([[' + d + ' + ' + 2 * d + ' = ' + k + ']]):<div class="calc">[[3x + ' + k + ' = ' + S + ']]</div>',
-      s2: 'Agora deixamos o [[x]] sozinho, uma conta de cada vez:<div class="calc calc-lines">' +
-        '<span>[[3x = ' + S + ' - ' + k + ']] <small>← o +' + k + ' muda de lado e vira −' + k + '</small></span>' +
-        '<span>[[3x = ' + (S - k) + ']]</span>' +
-        '<span>[[x = ' + (S - k) + ' ÷ 3]] <small>← o 3 que multiplica muda de lado e divide</small></span>' +
-        '<span>[[x = ' + a + ']]</span></div>',
-      final: 'Os três números eram:' + forms + '<br>Trocando o [[x]] por ' + a + ':' + bx(['[[' + a + ']]', '[[' + a + ' + ' + d + ']]', '[[' + a + ' + ' + 2 * d + ']]']) + '<br>Ou seja:' + bx(answer, 'nbox-answer'),
-      check: '[[' + answer.join(' + ') + ' = ' + S + ']] ✓' + (cons ? ' — e eles vêm um atrás do outro ✓.' : ', todos são ' + o.kind + ' ✓ e vão de 2 em 2 ✓.')
+      list: [
+        { t: cons ? 'Números consecutivos' : 'Números ' + o.kind + ' consecutivos', cls: 'concept',
+          b: intro + '<div class="nbox-groups">' + examples.map(function (t) { return bx(t); }).join('') + '</div>E assim vai. Então eles podem ser escritos assim:' + forms +
+            (cons ? '' : '<small class="nbox-note">(com [[x]] ' + (o.kind === 'ímpares' ? 'ímpar' : 'par') + ')</small>') + '<br>Todos os ' + (cons ? 'números consecutivos' : o.kind + ' consecutivos') + ' podem ser escritos dessa forma.' },
+        { t: 'O que o exercício pede?', b: 'A questão nos fala que a <b>soma</b> ' + who + ' é igual a <b>' + S + '</b>. Quais são esses números?' },
+        { t: 'O que o enunciado nos dá?', b: 'Os números são:' + forms + '<br>Somados, eles dão <b>' + S + '</b>.' },
+        { t: 'Montando a conta', b: 'Montamos a conta da soma:<div class="calc">[[x + x + ' + d + ' + x + ' + 2 * d + ' = ' + S + ']]</div>Juntamos os [[x]] ([[x + x + x = 3x]]) e juntamos os números ([[' + d + ' + ' + 2 * d + ' = ' + k + ']]):<div class="calc">[[3x + ' + k + ' = ' + S + ']]</div>' },
+        { t: 'Deixando o x sozinho', b: 'Uma conta de cada vez:<div class="calc calc-lines">' +
+            '<span>[[3x = ' + S + ' - ' + k + ']] <small>← o +' + k + ' muda de lado e vira −' + k + '</small></span>' +
+            '<span>[[3x = ' + (S - k) + ']]</span>' +
+            '<span>[[x = frac{' + (S - k) + '}{3}]] <small>← o 3 que multiplica muda de lado e divide</small></span></div>Falta fazer a divisão:' }
+      ].concat(CT.divide(S - k, 3).steps).concat([
+        { t: 'Achamos o x', b: 'A divisão deu ' + a + ':<div class="calc">[[x = ' + a + ']]</div>' },
+        { t: 'Resposta final', cls: 'final', b: 'Os três números eram:' + forms + '<br>Trocando o [[x]] por ' + a + ':' + bx(['[[' + a + ']]', '[[' + a + ' + ' + d + ']]', '[[' + a + ' + ' + 2 * d + ']]']) + '<br>Ou seja:' + bx(answer, 'nbox-answer') },
+        { t: 'Conferindo se faz sentido', cls: 'check', b: '[[' + answer.join(' + ') + ' = ' + S + ']] ✓' + (cons ? ' — e eles vêm um atrás do outro ✓.' : ', todos são ' + o.kind + ' ✓ e vão de 2 em 2 ✓.') }
+      ])
+    };
+  };
+
+  // Dobro/triplo/quádruplo (P1 Q3): o que é → chama de x → monta a equação → resolve linha por linha → divisão na chave.
+  // o = { k: 2 | 3 | 4 | 5, op: '+' | '-', b, c }  ("o k-plo de um número ímpar op b é igual a c")
+  var MULT = { 2: 'dobro', 3: 'triplo', 4: 'quádruplo', 5: 'quíntuplo' };
+  STEPS.multiplo = function (o) {
+    var k = o.k, w = MULT[k], b = o.b, c = o.c, plus = o.op === '+';
+    var kn = plus ? c - b : c + b, n = kn / k;
+    var W = w[0].toUpperCase() + w.slice(1), maisMenos = plus ? 'mais' : 'menos';
+    var eq = k + 'x ' + (plus ? '+' : '-') + ' ' + b + ' = ' + c;
+    return {
+      list: [
+        { t: 'O que é ' + w + '?', cls: 'concept', b: '<b>' + W + '</b> é multiplicar por <b>' + k + '</b>. Por exemplo: o ' + w + ' de 5 é [[' + k + ' * 5 = ' + 5 * k + ']].' },
+        { t: 'O que o exercício pede?', b: 'Nesse caso, não interessa se o número é ímpar ou par. O que interessa é que o <b>' + w + '</b> de um número <b>' + maisMenos + ' ' + b + '</b> é igual a <b>' + c + '</b>. Qual é esse número?' },
+        { t: 'Chamando o número de x', b: 'Vamos chamar esse número de [[x]], porque é o que a gente quer descobrir.' },
+        { t: 'Montando a equação', b: 'O ' + w + ' de [[x]] é [[' + k + 'x]]. Então a frase "o ' + w + ' de um número ' + maisMenos + ' ' + b + ' é igual a ' + c + '" vira:<div class="calc">[[' + eq + ']]</div>' },
+        { t: 'Deixando o x sozinho', b: 'Uma conta de cada vez:<div class="calc calc-lines">' +
+            '<span>[[' + eq + ']]</span>' +
+            '<span>[[' + k + 'x = ' + c + ' ' + (plus ? '-' : '+') + ' ' + b + ']] <small>← o ' + (plus ? '+' : '−') + b + ' muda de lado e vira ' + (plus ? '−' : '+') + b + '</small></span>' +
+            '<span>[[' + k + 'x = ' + kn + ']]</span>' +
+            '<span>[[x = frac{' + kn + '}{' + k + '}]] <small>← o ' + k + ' que multiplica muda de lado e divide</small></span></div>Falta fazer a divisão:' }
+      ].concat(CT.divide(kn, k).steps).concat([
+        { t: 'Achamos o x', b: 'A divisão deu ' + n + ':<div class="calc">[[x = ' + n + ']]</div>' },
+        { t: 'Resposta final', cls: 'final', b: 'O número é <b>' + n + '</b>.' },
+        { t: 'Conferindo se faz sentido', cls: 'check', b: 'O ' + w + ' de ' + n + ' é [[' + k + ' * ' + n + ' = ' + kn + ']], e [[' + kn + ' ' + (plus ? '+' : '-') + ' ' + b + ' = ' + c + ']] ✓. (E ' + n + ' é mesmo ímpar, como a questão falou ✓.)' }
+      ])
+    };
+  };
+
+  // Divisores (P2 Q3): pares que multiplicados dão N, testados pela tabuada (1, 2, 3, ...) até os pares se repetirem.
+  STEPS.divisores = function (N) {
+    var bx = window.GM_LOGIC.boxes, ds = [], pairs = [], lines = [], t;
+    for (t = 1; t * t <= N; t++) {
+      if (N % t === 0) { pairs.push([t, N / t]); lines.push('<span>[[' + t + ' * ' + N / t + ' = ' + N + ']] ✓ <small>← par ' + t + ' e ' + N / t + '</small></span>'); }
+      else { var a = Math.floor(N / t); lines.push('<span>[[' + t + ' * ' + a + ' = ' + t * a + ']] e [[' + t + ' * ' + (a + 1) + ' = ' + t * (a + 1) + ']] ✗ <small>← pula o ' + N + '</small></span>'); }
+    }
+    pairs.forEach(function (p) { ds.push(p[0]); if (p[1] !== p[0]) ds.push(p[1]); });
+    ds.sort(function (x, y) { return x - y; });
+    return {
+      list: [
+        { t: 'O que é divisor?', cls: 'concept', b: '<b>Divisor</b> de ' + N + ' é um número que divide o ' + N + ' <b>sem sobrar nada</b>. Truque: os divisores vêm em <b>pares</b> que, multiplicados, dão ' + N + '. Por exemplo, [[' + pairs[1 < pairs.length ? 1 : 0][0] + ' * ' + pairs[1 < pairs.length ? 1 : 0][1] + ' = ' + N + ']]: o ' + pairs[1 < pairs.length ? 1 : 0][0] + ' e o ' + pairs[1 < pairs.length ? 1 : 0][1] + ' são divisores.' },
+        { t: 'Procurando os pares pela tabuada', b: 'Testamos 1, 2, 3... Para cada um, procuramos na tabuada um número que, multiplicado por ele, dê ' + N + ':<div class="calc calc-lines">' + lines.join('') + '</div>' },
+        { t: 'Quando parar?', b: 'O próximo teste seria o ' + t + ', mas [[' + t + ' * ' + t + ' = ' + t * t + ']] já passa de ' + N + '. Daqui para a frente os pares só se repetem (trocados de lugar). Podemos parar!' },
+        { t: 'Juntando os pares', b: 'Os pares que encontramos:' + bx(pairs.map(function (p) { return '[[' + p[0] + ' * ' + p[1] + ']]'; })) + 'Cada número dos pares é um divisor.' },
+        { t: 'Resposta final', cls: 'final', b: 'Os divisores de ' + N + ' são:' + bx(ds, 'nbox-answer') },
+        { t: 'Conferindo se faz sentido', cls: 'check', b: 'São ' + ds.length + ' divisores, e cada par multiplicado dá ' + N + ' ✓. O 1 e o próprio ' + N + ' estão na lista ✓.' }
+      ]
+    };
+  };
+
+  // Multiplicação de polinômios (P2 Q7): chuveirinho, um arco por multiplicação → junta os parecidos → confere.
+  // A e B = [[coeficiente, expoente], ...]
+  STEPS.polyMul = function (A, B) {
+    var L = window.GM_LOGIC, r = CT.polyMulSteps(A, B), PA = L.polyFromTerms(A), PB = L.polyFromTerms(B), prod = r.prod;
+    var ev = function (P, x) { return Object.keys(P).reduce(function (s, e) { return s + P[e] * Math.pow(x, +e); }, 0); };
+    var x = ev(PA, 1) === 0 || ev(PB, 1) === 0 ? 2 : 1, a = ev(PA, x), b = ev(PB, x), p = ev(prod, x);
+    return {
+      list: r.list.concat([
+        { t: 'Resposta final', cls: 'final', b: '[[A * B = ' + L.polyToMath(prod) + ']]' },
+        { t: 'Conferindo se faz sentido', cls: 'check', b: 'Testando com [[x = ' + x + ']]: [[A(' + x + ') = ' + a + ']], [[B(' + x + ') = ' + b + ']] e [[' + a + ' * ' + (b < 0 ? '(' + b + ')' : b) + ' = ' + a * b + ']]. Na resposta, com [[x = ' + x + ']], também dá ' + p + ' ✓.' }
+      ])
     };
   };
 
@@ -502,10 +549,11 @@
         { t: 'O que a questão quer saber?', b: 'A questão quer saber a <b>média das notas</b> dos alunos.<br>Quais são os <b>valores</b>? São as <b>notas</b>:' + window.GM_LOGIC.boxes(notas) + '<br>E qual é a <b>quantidade de valores</b>? É o <b>número de alunos</b>: ' + n + '.' },
         { t: 'Montando a conta', b: 'Então a média é a soma das notas dividida pela quantidade de alunos:<div class="calc">Média = [[frac{' + notas.join(' + ') + '}{' + n + '}]]</div>' },
         { t: 'Somando as notas', b: 'Somamos uma nota de cada vez:<div class="calc calc-lines">' + chain.join('') + '</div>A soma das notas é <b>' + S + '</b>.' },
-        { t: 'Dividindo pela quantidade de alunos', b: 'Agora dividimos a soma pelos ' + n + ' alunos:<div class="calc calc-lines"><span>Média = [[frac{' + S + '}{' + n + '}]]</span><span>[[' + S + ' ÷ ' + n + ' = ' + br(mean) + ']]</span></div>' },
+        { t: 'Dividindo pela quantidade de alunos', b: 'Agora dividimos a soma pelos ' + n + ' alunos:<div class="calc">Média = [[frac{' + S + '}{' + n + '}]]</div>' }
+      ].concat(CT.divide(S, n).steps).concat([
         { t: 'Resposta final', cls: 'final', b: 'A média das notas dos alunos é <b>' + br(mean) + '</b>.' },
         { t: 'Conferindo se faz sentido', cls: 'check', b: 'A média tem que ficar entre a menor nota (' + Math.min.apply(null, notas) + ') e a maior (' + Math.max.apply(null, notas) + '): ' + br(mean) + ' fica ✓.' + (exact ? ' E [[' + br(mean) + ' * ' + n + ' = ' + S + ']], que é a soma das notas ✓.' : '') }
-      ]
+      ])
     };
   };
 
@@ -515,7 +563,7 @@
     var tot = 0, S = 0;
     groups.forEach(function (g) { tot += g[0]; S += g[0] * g[1]; });
     var mean = S / tot, exact = Math.abs(Math.round(mean * 100) - mean * 100) < 1e-9;
-    var meanTxt = exact ? br(mean) : br(mean, 2), approx = exact ? '=' : '≈';
+    var dv = CT.divide(S, tot, { maxDec: 2 }), meanTxt = dv.text;
     var prods = groups.map(function (g) { return g[0] + ' * ' + g[1]; }).join(' + ');
     var qtys = groups.map(function (g) { return g[0]; }).join(' + ');
     var ages = groups.map(function (g) { return g[1]; }).join(' + ');
@@ -528,14 +576,14 @@
           '<p class="aside">A gente não pode só somar [[' + ages + ']]: isso contaria só uma pessoa de cada idade, e não a idade de todo mundo. Não seria a soma dos valores.</p>' },
         { t: 'Qual é a quantidade de valores?', b: 'É a quantidade de <b>' + noun + '</b>:<div class="calc">[[' + qtys + ']]</div>' },
         { t: 'Montando a conta', b: 'A média é a soma dos valores dividida pela quantidade de valores:<div class="calc">Média = [[frac{' + prods + '}{' + qtys + '}]]</div>' },
-        { t: 'Fazendo as contas, passo a passo', b: 'Primeiro, a soma das idades (em cima):<div class="calc calc-lines">' +
-            groups.map(function (g) { return '<span>[[' + g[0] + ' * ' + g[1] + ' = ' + g[0] * g[1] + ']]</span>'; }).join('') +
-            '<span>[[' + groups.map(function (g) { return g[0] * g[1]; }).join(' + ') + ' = ' + S + ']]</span></div>' +
-            'Depois, a quantidade de ' + noun + ' (embaixo):<div class="calc">[[' + qtys + ' = ' + tot + ']]</div>' +
-            'Por último, a divisão:<div class="calc calc-lines"><span>Média = [[frac{' + S + '}{' + tot + '}]]</span><span>[[' + S + ' ÷ ' + tot + ' ' + approx + ' ' + meanTxt + ']]</span></div>' },
-        { t: 'Resposta final', cls: 'final', b: 'A média das idades é ' + (exact ? '<b>' + meanTxt + ' anos</b>' : '[[frac{' + S + '}{' + tot + '}]], aproximadamente <b>' + meanTxt + ' anos</b>') + '.' },
+        { t: 'A soma das idades (em cima)', b: 'Uma multiplicação de cada vez:' +
+            groups.map(function (g) { return CT.timesBlock(g[0], g[1]); }).join('') +
+            'Somando os três resultados:<div class="calc">[[' + groups.map(function (g) { return g[0] * g[1]; }).join(' + ') + ' = ' + S + ']]</div>' },
+        { t: 'A quantidade de ' + noun + ' (embaixo)', b: 'Somamos os ' + noun + ':<div class="calc">[[' + qtys + ' = ' + tot + ']]</div>Então a média é:<div class="calc">Média = [[frac{' + S + '}{' + tot + '}]]</div>Falta a divisão:' }
+      ].concat(dv.steps).concat([
+        { t: 'Resposta final', cls: 'final', b: 'A média das idades é ' + (exact ? '<b>' + meanTxt + ' anos</b>' : 'aproximadamente <b>' + meanTxt + ' anos</b>') + '.' },
         { t: 'Conferindo se faz sentido', cls: 'check', b: 'A média ficou entre a menor idade (' + Math.min.apply(null, groups.map(function (g) { return g[1]; })) + ') e a maior (' + Math.max.apply(null, groups.map(function (g) { return g[1]; })) + ') ✓, mais perto da idade do grupo que tem mais ' + noun + ' ✓.' }
-      ]
+      ])
     };
   };
 
@@ -575,12 +623,12 @@
     var intP = Math.round(p / 100 * Math.pow(10, places)), prod = intP * T, res = p * T / 100;
     return {
       calc: '[[' + decStr + ' * ' + br(T) + ' = ' + br(res) + ']]',
-      aside: places ? '<p class="aside">Como fazer: [[' + intP + ' * ' + br(T) + ' = ' + br(prod) + ']]. O ' + decStr + ' tem ' + places + (places > 1 ? ' casas' : ' casa') +
-        ' depois da vírgula, então a resposta também tem: [[' + br(prod / Math.pow(10, places), places) + ' = ' + br(res) + ']].</p>' : ''
+      aside: places ? '<div class="aside">Como fazer: primeiro a conta <b>sem a vírgula</b>, [[' + intP + ' * ' + br(T) + ' = ' + br(prod) + ']].' + CT.howTimes(intP, T) +
+        ' O ' + decStr + ' tem ' + places + (places > 1 ? ' casas' : ' casa') + ' depois da vírgula, então a resposta também tem: [[' + br(prod / Math.pow(10, places), places) + ' = ' + br(res) + ']].</div>' : ''
     };
   }
   var pctFig = function (svg) { return '<div class="st-fig">' + svg + '</div>'; };
-  var pctRule = '<b>100%</b> é [[100 ÷ 100 = 1]]: o todo é 1 inteiro. Toda porcentagem é um número <b>dividido por 100</b>. E para dividir por 100 é só andar com a <b>vírgula duas casas para a esquerda</b>:';
+  var pctRule = '<b>100%</b> é [[frac{100}{100} = 1]]: o todo é 1 inteiro. Toda porcentagem é um número <b>dividido por 100</b>. E para dividir por 100 é só andar com a <b>vírgula duas casas para a esquerda</b>:';
 
   // "p% de T" (P1 Q6a): exemplos com 10 na barra → a barra da questão → vírgula → conta.
   STEPS.pctOf = function (p, T) {
@@ -601,21 +649,21 @@
     };
   };
 
-  // "parte representa ?% do total" (P1 Q6b): onde a parte fica na barra → parte ÷ todo → vírgula para a direita.
+  // "parte representa ?% do total" (P1 Q6b): onde a parte fica na barra → parte dividida pelo todo (chave) → vírgula para a direita.
   STEPS.pctWhich = function (part, total) {
     var br = window.GM_LOGIC.brNum, dec = part / total, pct = dec * 100;
-    var g = (function gcd(a, b) { return b ? gcd(b, a % b) : a; })(part, total);
     var half = total / 2;
     var where = part > half ? 'Ele passa da metade (' + br(half) + '), então vai dar <b>mais que 50%</b>.' : part < half ? 'Ele não chega na metade (' + br(half) + '), então vai dar <b>menos que 50%</b>.' : 'Ele é exatamente a metade: 50%.';
     return {
       list: [
         { t: 'Lembrando: 100% é o todo', cls: 'concept', b: '<b>100% é o todo</b>, o completo. Aqui o todo é <b>' + total + '</b>: em cima da barra vai do 0 ao ' + total + ', embaixo de 0% a 100%.', fig: FIG.pctBar({ total: String(total), p: 100 }) },
         { t: 'Onde fica o ' + part + '?', b: 'O <b>' + part + '</b> é uma parte do ' + total + '. Na barra, ele fica aqui. ' + where, fig: FIG.pctBar({ total: String(total), p: pct, from: 100, value: String(part), pctLabel: '?%' }) },
-        { t: 'Que parte do todo?', b: 'Dividimos a <b>parte</b> pelo <b>todo</b>:<div class="calc calc-lines"><span>[[frac{' + part + '}{' + total + '}' + (g > 1 ? ' = frac{' + part / g + '}{' + total / g + '}' : '') + ']]</span><span>[[' + part / g + ' ÷ ' + total / g + ' = ' + br(dec) + ']]</span></div>' },
+        { t: 'Que parte do todo?', b: 'Dividimos a <b>parte</b> pelo <b>todo</b>:<div class="calc">[[frac{' + part + '}{' + total + '}]]</div>Vamos fazer essa divisão:' }
+      ].concat(CT.divide(part, total).steps).concat([
         { t: 'Número vira porcentagem', b: 'Porcentagem é dividir por 100 (a vírgula anda duas casas para a esquerda). Agora é o <b>caminho de volta</b>: multiplicamos por 100, e a <b>vírgula anda duas casas para a direita</b>:' + pctFig(FIG.decToPct(br(dec), 0)) + '<div class="calc">[[' + br(dec) + ' * 100 = ' + br(pct) + ']]%</div>' },
         { t: 'Resposta final', cls: 'final', b: part + ' representa <b>' + br(pct) + '%</b> de ' + total + '.', fig: FIG.pctBar({ total: String(total), p: pct, value: String(part), pctLabel: br(pct) + '%' }) },
         { t: 'Conferindo se faz sentido', cls: 'check', b: br(pct) + '% de ' + total + ' = [[' + br(dec) + ' * ' + total + ' = ' + part + ']] ✓.' }
-      ]
+      ])
     };
   };
 
@@ -644,7 +692,7 @@
     var one = function (i) {
       return {
         t: 'Área do quadrado ' + (i + 1),
-        b: 'O quadrado ' + (i + 1) + ' (' + names[i] + ') tem lado <b>' + s[i] + ' cm</b>. Como é um <b>quadrado</b>, os 4 lados são <b>iguais</b> (as marquinhas mostram isso). Por isso a área é lado × lado:<div class="calc">[[' + s[i] + ' * ' + s[i] + ' = ' + ar[i] + ']] cm²</div>',
+        b: 'O quadrado ' + (i + 1) + ' (' + names[i] + ') tem lado <b>' + s[i] + ' cm</b>. Como é um <b>quadrado</b>, os 4 lados são <b>iguais</b> (as marquinhas mostram isso). Por isso a área é lado × lado (em cm²):' + CT.timesBlock(s[i], s[i]),
         fig: FIG.squaresStage(s, i + 1)
       };
     };
@@ -661,7 +709,7 @@
   };
 
   // Revestimento com lajotas (P2 Q10): desenha a região → converte para cm (o rótulo troca na figura) →
-  // lajotas aparecendo → zoom numa lajota → área total ÷ área de uma → "ainda não acabou!" → preço.
+  // lajotas aparecendo → zoom numa lajota → área total dividida pela área de uma (chave) → "ainda não acabou!" → preço.
   STEPS.tiles = function (Lm, Wmm, t, price) {
     var br = window.GM_LOGIC.brNum, money = window.GM_LOGIC.brMoney;
     var Lc = Math.round(Lm * 100), Wc = Wmm / 10, area = Lc * Wc, ta = t * t, n = area / ta, cost = n * price;
@@ -669,30 +717,38 @@
     var noReuse = Math.ceil(cols) * Math.ceil(rows);
     var mS = br(Lm, 2) + ' m', mmS = Wmm + ' mm', LS = Lc + ' cm', WS = Wc + ' cm';
     var fig = function (o) { var b = { L: Lc, W: Wc, t: t }; for (var key in o) b[key] = o[key]; return FIG.tilesStage(b); };
-    var ip = Math.floor(price), fp = Math.round((price - ip) * 100) / 100;
-    var mult = '<div class="calc calc-lines"><span>[[' + n + ' * ' + br(price, 2) + ']]</span>' +
-      (fp ? '<span>[[' + n + ' * ' + ip + ' = ' + grp(n * ip) + ']] <small>← primeiro os reais inteiros</small></span>' +
-        '<span>[[' + n + ' * ' + br(fp, 2) + ' = ' + grp(n * fp, 2) + ']] <small>← depois os centavos</small></span>' +
-        '<span>[[' + grp(n * ip) + ' + ' + grp(n * fp, 2) + ' = ' + grp(cost, 2) + ']]</span>'
-        : '<span>[[' + n + ' * ' + ip + ' = ' + grp(cost) + ']]</span>') + '</div>';
+    var pf = function (svg) { return '<div class="st-fig">' + svg + '</div>'; };
+    var fullCols = Math.floor(cols), restCm = Lc - fullCols * t;
+    // área da região: conta armada em etapas quando precisa (76 × 48); senão, conta direta
+    var areaSteps = CT.needsArmada(Lc, Wc)
+      ? [{ t: 'Área da região inteira', b: 'A área do retângulo inteiro é comprimento × largura:<div class="calc">[[' + Lc + ' * ' + Wc + ']]</div>Vamos fazer na <b>conta armada</b>:' }]
+        .concat(CT.armadaSteps(Lc, Wc).steps)
+        .concat([{ t: 'A área da região', b: 'A conta deu:<div class="calc">[[' + Lc + ' * ' + Wc + ' = ' + area + ']] cm²</div>', fig: fig({ stage: 'area', lblL: LS, lblW: WS, center: area + ' cm²' }) }])
+      : [{ t: 'Área da região inteira', b: 'A área do retângulo inteiro é comprimento × largura:<div class="calc">[[' + Lc + ' * ' + Wc + ' = ' + area + ']] cm²</div>', fig: fig({ stage: 'area', lblL: LS, lblW: WS, center: area + ' cm²' }) }];
+    // preço: conta armada direto (57 × 2,75), a vírgula entra só no fim
+    var priceSteps = CT.needsArmada(n, price)
+      ? CT.armadaSteps(price, n, 'Armando a conta do preço').steps
+      : [{ t: 'Fazendo a conta', b: '<div class="calc">[[' + n + ' * ' + br(price, 2) + ' = ' + br(cost) + ']]</div>' }];
     return {
       list: [
         { t: 'A região retangular', b: 'A região é um retângulo de <b>' + mS + '</b> de comprimento por <b>' + mmS + '</b> de largura.', fig: fig({ stage: 'draw', lblL: mS, lblW: mmS }) },
         { t: 'Opa! Unidades diferentes', cls: 'concept', b: 'O comprimento está em <b>metros</b>, a largura em <b>milímetros</b> e a lajota em <b>centímetros</b>. Não dá para fazer conta misturando unidades! Vamos converter tudo para <b>centímetros</b>.' },
-        { t: br(Lm, 2) + ' m são quantos centímetros?', b: 'De metro para centímetro, <b>multiplicamos por 100</b> (1 m = 100 cm):<div class="calc">[[' + br(Lm, 2) + ' * 100 = ' + Lc + ']] cm</div>', fig: fig({ stage: 'relabel', prevL: mS, lblL: LS, lblW: mmS }) },
-        { t: Wmm + ' mm são quantos centímetros?', b: 'De milímetro para centímetro, <b>dividimos por 10</b> (10 mm = 1 cm):<div class="calc">[[' + Wmm + ' ÷ 10 = ' + Wc + ']] cm</div>', fig: fig({ stage: 'relabel', lblL: LS, prevW: mmS, lblW: WS }) },
+        { t: br(Lm, 2) + ' m são quantos centímetros?', b: 'De metro para centímetro, <b>multiplicamos por 100</b> (1 m = 100 cm). Multiplicar por 100: a <b>vírgula pula 2 casas para a direita</b>:' + pf(CT.shiftFig(Lm, 2, true, 0)) + '<div class="calc">[[' + br(Lm, 2) + ' * 100 = ' + Lc + ']] cm</div>', fig: fig({ stage: 'relabel', prevL: mS, lblL: LS, lblW: mmS }) },
+        { t: Wmm + ' mm são quantos centímetros?', b: 'De milímetro para centímetro, <b>dividimos por 10</b> (10 mm = 1 cm). Dividir por 10: a <b>vírgula pula 1 casa para a esquerda</b> (no ' + Wmm + ' ela está escondida no fim):' + pf(CT.shiftFig(Wmm, 1, false, 0)) + '<div class="calc">[[frac{' + Wmm + '}{10} = ' + Wc + ']] cm</div>', fig: fig({ stage: 'relabel', lblL: LS, prevW: mmS, lblW: WS }) },
         { t: 'As lajotas', b: 'Pronto: a região agora está em centímetros, <b>' + Lc + ' cm por ' + Wc + ' cm</b>. Ela vai ser revestida por lajotas quadradas de <b>' + t + ' cm</b> de lado:', fig: fig({ stage: 'tiles', lblL: LS, lblW: WS }) },
-        { t: 'Área de uma lajota', b: 'Olhando uma lajota de perto: ela tem ' + t + ' cm por ' + t + ' cm. Como agora <b>todas as medidas estão em centímetros</b>, podemos fazer as contas:<div class="calc">área de uma lajota = [[' + t + ' * ' + t + ' = ' + ta + ']] cm²</div>', fig: FIG.tileZoom(Lc, Wc, t) },
-        { t: 'Área da região inteira', b: 'A área do retângulo inteiro é comprimento × largura:<div class="calc">[[' + Lc + ' * ' + Wc + ' = ' + area + ']] cm²</div>', fig: fig({ stage: 'area', lblL: LS, lblW: WS, center: area + ' cm²' }) },
-        { t: 'Quantas lajotas cabem?', b: 'Para descobrir quantas lajotas são necessárias para preencher tudo, <b>dividimos a área total pela área de uma lajota</b>:<div class="calc">[[' + area + ' ÷ ' + ta + ' = ' + n + ']] lajotas</div>' +
-            (half ? '<p class="aside">No comprimento cabem [[' + Lc + ' ÷ ' + t + ' = ' + br(cols) + ']] lajotas: a última coluna é de <b>meias lajotas</b> (em azul). Uma lajota cortada ao meio cobre dois pedaços: os recortes são <b>reaproveitados</b>. Por isso a conta da área dá certinho ' + n + '.</p>'
-              : '<p class="aside">As lajotas cabem certinho: ' + cols + ' no comprimento × ' + rows + ' na largura = ' + n + '.</p>'),
+        { t: 'Área de uma lajota', b: 'Olhando uma lajota de perto: ela tem ' + t + ' cm por ' + t + ' cm. Como agora <b>todas as medidas estão em centímetros</b>, podemos fazer as contas. Área de uma lajota:' + CT.timesBlock(t, t), fig: FIG.tileZoom(Lc, Wc, t) }
+      ].concat(areaSteps).concat([
+        { t: 'Quantas lajotas cabem?', b: 'Para descobrir quantas lajotas são necessárias para preencher tudo, <b>dividimos a área total pela área de uma lajota</b>:<div class="calc">[[frac{' + area + '}{' + ta + '}]]</div>Vamos fazer essa divisão:' }
+      ]).concat(CT.divide(area, ta).steps).concat([
+        { t: 'São ' + n + ' lajotas', b: 'A divisão deu <b>' + n + '</b>: precisamos de ' + n + ' lajotas.' +
+            (half ? '<p class="aside">No comprimento cabem ' + fullCols + ' lajotas inteiras ([[' + fullCols + ' * ' + t + ' = ' + fullCols * t + ']] cm) e sobram [[' + Lc + ' - ' + fullCols * t + ' = ' + restCm + ']] cm: a última coluna é de <b>meias lajotas</b> (em azul). Uma lajota cortada ao meio cobre dois pedaços: os recortes são <b>reaproveitados</b>. Por isso a conta da área dá certinho ' + n + '.</p>'
+              : '<p class="aside">As lajotas cabem certinho: ' + cols + ' no comprimento e ' + rows + ' na largura, [[' + cols + ' * ' + rows + ' = ' + n + ']].</p>'),
           fig: fig({ stage: 'count', lblL: LS, lblW: WS, center: n + ' lajotas' }) },
-        { t: 'Opa! Ainda não acabou', cls: 'concept', b: 'Isso ainda <b>não é a resposta final</b>: a questão quer o <b>preço total</b>. Cada lajota custa <b>' + money(price) + '</b>. Se vamos precisar de ' + n + ' lajotas, o preço é ' + n + ' vezes ' + money(price) + ':<div class="calc">preço total = [[' + n + ' * ' + br(price, 2) + ']]</div>' },
-        { t: 'Fazendo a conta', b: 'Uma parte de cada vez:' + mult },
-        { t: 'Resposta final', cls: 'final', b: 'O total a pagar é <b>' + money(cost) + '</b>.' },
+        { t: 'Opa! Ainda não acabou', cls: 'concept', b: 'Isso ainda <b>não é a resposta final</b>: a questão quer o <b>preço total</b>. Cada lajota custa <b>' + money(price) + '</b>. Se vamos precisar de ' + n + ' lajotas, o preço é ' + n + ' vezes ' + money(price) + ':<div class="calc">preço total = [[' + n + ' * ' + br(price, 2) + ']]</div>' }
+      ]).concat(priceSteps).concat([
+        { t: 'Resposta final', cls: 'final', b: 'A conta deu ' + br(cost) + '. O total a pagar é <b>' + money(cost) + '</b>.' },
         { t: 'Conferindo se faz sentido', cls: 'check', b: '[[' + n + ' * ' + ta + ' = ' + area + ']] cm², exatamente a área da região ✓.' + (half ? ' (Sem reaproveitar os recortes, seriam ' + noReuse + ' lajotas.)' : '') }
-      ]
+      ])
     };
   };
 
@@ -858,7 +914,7 @@
               type: 'choice', layout: 'list', correct: 'nao',
               options: [
                 { id: 'negrad', html: '[[-R{4}{28}]]', hint: 'Teste o sinal: [[(-R{4}{28})^4]] dá positivo ou negativo? Um número elevado à 4ª potência nunca fica negativo.' },
-                { id: 'm7', html: '[[-7]]', hint: 'Cuidado: raiz não é divisão! [[28 ÷ 4 = 7]], mas raiz quarta é outra coisa.' },
+                { id: 'm7', html: '[[-7]]', hint: 'Cuidado: raiz não é divisão! 28 dividido por 4 dá 7, mas raiz quarta é outra coisa.' },
                 { id: 'nao', html: 'Não existe no conjunto dos números reais ([[ℝ]])' },
                 { id: 'rad', html: '[[R{4}{28}]]', hint: '[[R{4}{28}]] elevado à 4ª potência dá +28, e não −28.' }
               ]
@@ -939,15 +995,7 @@
             { when: 31, msg: 'Você dividiu antes de tirar o 12. Primeiro desfaça o "+12", depois o "×3".' }
           ],
           final: '27',
-          steps: {
-            intro: { t: 'O que é triplo?', b: '<b>Triplo</b> é multiplicar por <b>3</b>. Por exemplo: o triplo de 5 é [[3 * 5 = 15]].' },
-            ask: 'Nesse caso, não interessa se o número é ímpar ou par. O que interessa é que o <b>triplo</b> de um número <b>mais 12</b> é igual a <b>93</b>. Qual é esse número?',
-            data: 'Vamos chamar esse número de [[x]], porque é o que a gente quer descobrir.',
-            s1: 'O triplo de [[x]] é [[3x]]. Então a frase "o triplo de um número mais 12 é igual a 93" vira:<div class="calc">[[3x + 12 = 93]]</div>',
-            s2: 'Agora é só resolver, uma conta de cada vez:<div class="calc calc-lines"><span>[[3x + 12 = 93]]</span><span>[[3x = 93 - 12]] <small>← o +12 muda de lado e vira −12</small></span><span>[[3x = 81]]</span><span>[[x = 81 ÷ 3]] <small>← o 3 que multiplica muda de lado e divide</small></span><span>[[x = 27]]</span></div>',
-            final: 'O número é <b>27</b>.',
-            check: 'O triplo de 27 é [[3 * 27 = 81]], e [[81 + 12 = 93]] ✓. (E 27 é mesmo ímpar, como a questão falou ✓.)'
-          }
+          steps: STEPS.multiplo({ k: 3, op: '+', b: 12, c: 93 })
         }],
         variations: []
       },
@@ -1007,7 +1055,7 @@
             hint: { rules: ['pct-porcentagem'], tip: 'Qual número é a <b>parte</b> e qual é o <b>total</b> aqui?' },
             hints: [
               { when: 0.625, msg: 'Quase! 0,625 é a fração em decimal. Multiplique por 100 para virar porcentagem.' },
-              { when: 160, msg: 'Você fez 32 ÷ 20. A parte (20) vai em cima: 20 ÷ 32.' },
+              { when: 160, msg: 'Você dividiu 32 por 20. A parte (20) vai em cima: [[frac{20}{32}]].' },
               { when: 6.4, msg: 'Isso é 20% de 32. A pergunta é: 20 é quantos por cento de 32?' }
             ],
             final: '62,5%',
@@ -1060,7 +1108,7 @@
           answer: { type: 'number', value: 335 / 29, tol: 0.049, suffix: 'anos', placeholder: 'Média', help: 'Pode responder com duas casas decimais (ex.: 10,25) ou como fração (ex.: 41/4).' },
           hint: { rules: ['media-grupos'], tip: 'Cada idade aparece várias vezes. Multiplique cada idade pela quantidade de alunos antes de somar — e divida pelo total de alunos.' },
           hints: [
-            { when: 37 / 3, tol: 0.02, msg: 'Você fez (10 + 12 + 15) ÷ 3. Mas cada idade aparece <b>várias vezes</b>: são 14 alunos de 10 anos!' },
+            { when: 37 / 3, tol: 0.02, msg: 'Você somou 10 + 12 + 15 e dividiu por 3. Mas cada idade aparece <b>várias vezes</b>: são 14 alunos de 10 anos!' },
             { when: 335, msg: 'Essa é a soma de todas as idades. Divida pelo número de alunos.' },
             { when: 11.5, msg: 'Arredondou demais. Use duas casas decimais.' },
             { when: 11, msg: 'Arredondou demais. Use duas casas decimais.' },
@@ -1207,15 +1255,7 @@
             { when: function () { return true; }, msg: 'Ainda falta divisor. Lembre dos pares que multiplicados dão 18: 1 × 18, 2 × ?, 3 × ?' }
           ],
           final: '1, 2, 3, 6, 9 e 18',
-          steps: {
-            ask: 'Listar <b>todos</b> os números que dividem 18 sem sobrar resto.',
-            concept: '<b>Divisor</b> de 18 = número que divide 18 com resto zero. Truque: os divisores vêm em <b>pares</b> que, multiplicados, dão 18.',
-            data: 'O número é <b>18</b>.',
-            s1: 'Testamos um por um:<div class="calc">[[18 ÷ 1 = 18]] ✓ &nbsp; [[18 ÷ 2 = 9]] ✓ &nbsp; [[18 ÷ 3 = 6]] ✓</div><div class="calc">[[18 ÷ 4]] = 4 e sobra 2 ✗ &nbsp; [[18 ÷ 5]] = 3 e sobra 3 ✗</div>',
-            s2: 'Montamos os pares: <b>1 × 18</b>, <b>2 × 9</b>, <b>3 × 6</b>. Depois do 5 vem o 6, que já apareceu num par — podemos parar.',
-            final: 'Os divisores de 18 são:' + window.GM_LOGIC.boxes([1, 2, 3, 6, 9, 18], 'nbox-answer'),
-            check: 'São 6 divisores. Pelo truque dos expoentes: [[18 = 2^1 * 3^2]] → [[(1 + 1) * (2 + 1) = 6]] ✓.'
-          }
+          steps: STEPS.divisores(18)
         }],
         variations: []
       },
@@ -1233,7 +1273,7 @@
               s1: '<b>Por 2:</b> o último algarismo é <b>2</b>, que é par → divisível por 2 ✓.',
               s2: '<b>Por 3:</b> somamos os algarismos: [[1 + 9 + 2 = 12]]. 12 está na tabuada do 3 ([[3 * 4 = 12]]) → divisível por 3 ✓.',
               final: '192 é divisível <b>por 2 e por 3</b>.',
-              check: '[[192 ÷ 2 = 96]] e [[192 ÷ 3 = 64]], sem resto ✓.'
+              check: '[[2 * 96 = 192]] e [[3 * 64 = 192]]: dá certinho, sem sobrar nada ✓.'
             }
           },
           {
@@ -1246,7 +1286,7 @@
               s1: '<b>Por 2:</b> termina em <b>5</b>, que é ímpar → não é divisível por 2 ✗.',
               s2: '<b>Por 3:</b> [[3 + 0 + 0 + 5 = 8]]. 8 não está na tabuada do 3 → não é divisível por 3 ✗.',
               final: '3005 <b>não é divisível nem por 2 nem por 3</b>.',
-              check: '[[3005 ÷ 3]] dá 1001 e sobra 2 ✓ (sobrou resto, então não divide).'
+              check: '[[3 * 1001 = 3003]], e de 3003 até 3005 sobram 2 ✓ (sobrou resto, então não divide).'
             }
           },
           {
@@ -1259,7 +1299,7 @@
               s1: '<b>Por 2:</b> termina em <b>0</b>, que é par → divisível por 2 ✓.',
               s2: '<b>Por 3:</b> [[2 + 0 + 9 + 2 + 0 = 13]]. 13 não está na tabuada do 3 → não é divisível por 3 ✗.',
               final: '20920 é divisível <b>somente por 2</b>.',
-              check: '[[20920 ÷ 2 = 10460]] ✓; [[20920 ÷ 3]] dá 6973 e sobra 1 ✗.'
+              check: '[[2 * 10460 = 20920]] ✓; [[3 * 6973 = 20919]] e sobra 1 ✗.'
             }
           },
           {
@@ -1272,7 +1312,7 @@
               s1: '<b>Por 2:</b> termina em <b>8</b>, que é par → divisível por 2 ✓.',
               s2: '<b>Por 3:</b> [[7 + 0 + 8 = 15]]. 15 está na tabuada do 3 ([[3 * 5 = 15]]) → divisível por 3 ✓.',
               final: '708 é divisível <b>por 2 e por 3</b>.',
-              check: '[[708 ÷ 2 = 354]] e [[708 ÷ 3 = 236]], sem resto ✓.'
+              check: '[[2 * 354 = 708]] e [[3 * 236 = 708]]: dá certinho, sem sobrar nada ✓.'
             }
           }
         ],
@@ -1373,7 +1413,7 @@
         items: [{
           key: 'u',
           answer: { type: 'polynomial', coeffs: { 3: 1, 2: 4, 1: 3 }, simplified: true },
-          hint: { rules: ['distributiva', 'potencias'], tip: 'Multiplique <b>cada</b> termo de [[A]] por <b>cada</b> termo de [[B]] (são 4 multiplicações). Depois junte os semelhantes.' },
+          hint: { rules: ['distributiva', 'potencias'], tip: 'Faça o <b>chuveirinho</b>: cada termo de [[A]] multiplica cada termo de [[B]] (são 4 multiplicações). Depois junte os termos parecidos.' },
           hints: [
             { when: 'x^2 + 4x + 1', msg: 'Isso é [[A + B]] (soma). A questão pede a <b>multiplicação</b>.' },
             { when: 'x^3 + 3x', msg: 'Faltou multiplicar alguns termos: cada termo do primeiro vezes <b>cada</b> termo do segundo (são 4 multiplicações).' },
@@ -1382,15 +1422,7 @@
             { when: 'x^3 + 3x^2 + 3x', msg: 'Faltou o termo [[x^2 * 1 = x^2]]. Depois junte com os outros [[x^2]].' }
           ],
           final: '[[x^3 + 4x^2 + 3x]]',
-          steps: {
-            ask: '<b>Multiplicar</b> [[A(x)]] por [[B(x)]].',
-            concept: '<b>Distributiva</b> (o "chuveirinho"): cada termo do primeiro multiplica cada termo do segundo. E na multiplicação de potências de mesma base, <b>somamos</b> os expoentes: [[x^2 * x = x^3]].',
-            data: '[[A(x) = x^2 + 3x]] e [[B(x) = x + 1]].',
-            s1: 'Fazemos as 4 multiplicações de [[(x^2 + 3x)(x + 1)]]:<div class="calc">[[x^2 * x = x^3]] &nbsp; [[x^2 * 1 = x^2]]</div><div class="calc">[[3x * x = 3x^2]] &nbsp; [[3x * 1 = 3x]]</div>',
-            s2: 'Juntamos tudo e somamos os termos semelhantes ([[x^2 + 3x^2 = 4x^2]]):<div class="calc">[[x^3 + x^2 + 3x^2 + 3x = x^3 + 4x^2 + 3x]]</div>',
-            final: '[[A * B = x^3 + 4x^2 + 3x]]',
-            check: 'Testando com [[x = 1]]: [[A(1) = 4]], [[B(1) = 2]] e [[4 * 2 = 8]]. Na resposta: [[1 + 4 + 3 = 8]] ✓.'
-          }
+          steps: STEPS.polyMul([[1, 2], [3, 1]], [[1, 1], [1, 0]])
         }],
         variations: []
       },

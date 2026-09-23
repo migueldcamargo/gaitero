@@ -1,8 +1,8 @@
 /* GAITERO MATH — funciona sem internet depois de aberto uma vez (site hospedado).
    Ao mudar qualquer arquivo do app, troque a versão abaixo para os celulares baixarem de novo. */
-const CACHE = 'gaitero-math-v8';
+const CACHE = 'gaitero-math-v9';
 const FILES = [
-  './', 'index.html', 'style.css', 'logic.js', 'formulas.js', 'questions.js', 'variations.js', 'app.js',
+  './', 'index.html', 'style.css', 'logic.js', 'formulas.js', 'contas.js', 'questions.js', 'variations.js', 'app.js',
   'manifest.webmanifest', 'assets/icon-192.png', 'assets/icon-512.png', 'assets/apple-touch-icon.png'
 ];
 const OPTIONAL = ['assets/splash.jpg', 'assets/avatar.jpg'];

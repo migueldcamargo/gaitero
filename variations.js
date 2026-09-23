@@ -51,7 +51,7 @@
     var sqrtA = Math.sqrt(A);
     var alt = Number.isInteger(sqrtA) && n !== 2
       ? { id: 'alt', html: '[[-' + sqrtA + ']]', hint: 'Isso seria a raiz <b>quadrada</b> (índice 2). Aqui o índice é ' + n + '.' }
-      : { id: 'alt', html: '[[' + br(rad / n) + ']]', hint: 'Cuidado: raiz não é divisão! [[' + A + ' ÷ ' + n + ']] é outra conta.' };
+      : { id: 'alt', html: '[[' + br(rad / n) + ']]', hint: 'Cuidado: raiz não é divisão! ' + A + ' dividido por ' + n + ' é outra conta.' };
     var opts = {
       neg: { id: 'neg', html: '[[-' + root + ']]', hint: even ? 'Teste: [[(-' + root + ')^' + n + ']] dá positivo, porque o expoente é par. Não dá ' + br(rad) + '.' : null },
       pos: { id: 'pos', html: '[[' + root + ']]', hint: '[[' + root + '^' + n + ' = ' + A + ']], que é positivo. Precisa dar ' + br(rad) + '.' },
@@ -143,25 +143,7 @@
           { when: kn, msg: 'Esse é o <b>' + w + '</b> do número! Falta dividir por ' + k + '.' }
         ],
         final: String(n),
-        steps: (function () {
-          // Mesmo roteiro da original: o que é dobro/triplo → chama de x → monta a equação → resolve linha por linha.
-          var W = w[0].toUpperCase() + w.slice(1), maisMenos = plus ? 'mais' : 'menos';
-          var eq = k + 'x ' + (plus ? '+' : '-') + ' ' + b + ' = ' + c;
-          return {
-            intro: { t: 'O que é ' + w + '?', b: '<b>' + W + '</b> é multiplicar por <b>' + k + '</b>. Por exemplo: o ' + w + ' de 5 é [[' + k + ' * 5 = ' + 5 * k + ']].' },
-            ask: 'Nesse caso, não interessa se o número é ímpar ou par. O que interessa é que o <b>' + w + '</b> de um número <b>' + maisMenos + ' ' + b + '</b> é igual a <b>' + c + '</b>. Qual é esse número?',
-            data: 'Vamos chamar esse número de [[x]], porque é o que a gente quer descobrir.',
-            s1: 'O ' + w + ' de [[x]] é [[' + k + 'x]]. Então a frase "o ' + w + ' de um número ' + maisMenos + ' ' + b + ' é igual a ' + c + '" vira:<div class="calc">[[' + eq + ']]</div>',
-            s2: 'Agora é só resolver, uma conta de cada vez:<div class="calc calc-lines">' +
-              '<span>[[' + eq + ']]</span>' +
-              '<span>[[' + k + 'x = ' + c + ' ' + (plus ? '-' : '+') + ' ' + b + ']] <small>← o ' + (plus ? '+' : '−') + b + ' muda de lado e vira ' + (plus ? '−' : '+') + b + '</small></span>' +
-              '<span>[[' + k + 'x = ' + kn + ']]</span>' +
-              '<span>[[x = ' + kn + ' ÷ ' + k + ']] <small>← o ' + k + ' que multiplica muda de lado e divide</small></span>' +
-              '<span>[[x = ' + n + ']]</span></div>',
-            final: 'O número é <b>' + n + '</b>.',
-            check: 'O ' + w + ' de ' + n + ' é [[' + k + ' * ' + n + ' = ' + kn + ']], e [[' + kn + ' ' + (plus ? '+' : '-') + ' ' + b + ' = ' + c + ']] ✓. (E ' + n + ' é mesmo ímpar, como a questão falou ✓.)'
-          };
-        })()
+        steps: window.GM_STEPS.multiplo(p)
       }]
     };
   };
@@ -233,7 +215,7 @@
           hint: { rules: ['pct-porcentagem'], tip: 'Qual número é a <b>parte</b> e qual é o <b>total</b> aqui?' },
           hints: [
             { when: dec, msg: 'Quase! ' + br(dec) + ' é a fração em decimal. Multiplique por 100 para virar porcentagem.' },
-            { when: tot / part * 100, msg: 'Você fez ' + tot + ' ÷ ' + part + '. A parte (' + part + ') vai em cima.' }
+            { when: tot / part * 100, msg: 'Você dividiu ' + tot + ' por ' + part + '. A parte (' + part + ') vai em cima: [[frac{' + part + '}{' + tot + '}]].' }
           ],
           final: br(vb) + '%',
           steps: window.GM_STEPS.pctWhich(part, tot)
@@ -479,9 +461,7 @@
 
   // Q3 — lista de divisores
   G.p2q3 = function (p) {
-    var N = p.N, ds = divisors(N), pairs = [], tested = [];
-    for (var i = 0; i < ds.length && ds[i] * ds[i] <= N; i++) pairs.push('<b>' + ds[i] + ' × ' + N / ds[i] + '</b>');
-    for (var t = 1; t * t <= N; t++) tested.push('[[' + N + ' ÷ ' + t + ']] ' + (N % t === 0 ? '= ' + N / t + ' ✓' : 'sobra ' + (N % t) + ' ✗'));
+    var N = p.N, ds = divisors(N);
     var neg = ds.slice().reverse().map(function (v) { return -v; }).concat(ds);
     return {
       prompt: 'Apresente todos os divisores do número ' + N + '.',
@@ -495,15 +475,7 @@
           { when: function () { return true; }, msg: 'Ainda falta divisor. Procure todos os pares que multiplicados dão ' + N + '.' }
         ],
         final: ds.slice(0, -1).join(', ') + ' e ' + ds[ds.length - 1],
-        steps: {
-          ask: 'Listar <b>todos</b> os números que dividem ' + N + ' sem sobrar resto.',
-          concept: 'Divisores vêm em <b>pares</b> que, multiplicados, dão o número.',
-          data: 'O número é <b>' + N + '</b>.',
-          s1: 'Testamos de 1 em diante:<div class="calc">' + tested.join(' &nbsp; ') + '</div>',
-          s2: 'Os pares são:' + L.boxes(pairs) + 'Quando o próximo teste passaria da metade do caminho (os pares começariam a se repetir), podemos parar.',
-          final: 'Os divisores de ' + N + ' são:' + L.boxes(ds, 'nbox-answer'),
-          check: 'São ' + ds.length + ' divisores, e cada par multiplicado dá ' + N + ' ✓.'
-        }
+        steps: window.GM_STEPS.divisores(N)
       }]
     };
   };
@@ -537,7 +509,7 @@
         s1: '<b>Por 2:</b> o último algarismo é <b>' + last + '</b>, que é ' + (by2 ? 'par → divisível por 2 ✓' : 'ímpar → não é divisível por 2 ✗') + '.',
         s2: '<b>Por 3:</b> [[' + digits.join(' + ') + ' = ' + s + ']]. ' + s + (by3 ? ' está' : ' não está') + ' na tabuada do 3 → ' + (by3 ? 'divisível por 3 ✓' : 'não é divisível por 3 ✗') + '.',
         final: n + ' é divisível <b>' + label + '</b>.',
-        check: (by2 ? '[[' + n + ' ÷ 2 = ' + n / 2 + ']] ✓' : '[[' + n + ' ÷ 2]] sobra 1 ✗') + '; ' + (by3 ? '[[' + n + ' ÷ 3 = ' + n / 3 + ']] ✓' : '[[' + n + ' ÷ 3]] sobra ' + (n % 3) + ' ✗') + '.'
+        check: (by2 ? '[[2 * ' + n / 2 + ' = ' + n + ']] ✓' : '[[2 * ' + (n - 1) / 2 + ' = ' + (n - 1) + ']] e sobra 1 ✗') + '; ' + (by3 ? '[[3 * ' + n / 3 + ' = ' + n + ']] ✓' : '[[3 * ' + Math.floor(n / 3) + ' = ' + 3 * Math.floor(n / 3) + ']] e sobra ' + (n % 3) + ' ✗') + '.'
       }
     };
   }
@@ -625,36 +597,19 @@
   // Q7 — multiplicação de polinômios
   G.p2q7 = function (p) {
     var A = L.polyFromTerms(p.A), B = L.polyFromTerms(p.B), prod = L.pMul(A, B);
-    var lines = [], raw = [];
-    p.A.forEach(function (ta) {
-      p.B.forEach(function (tb) {
-        var c = ta[0] * tb[0], e = ta[1] + tb[1];
-        raw.push([c, e]);
-        lines.push('[[' + termMath(ta[0], ta[1], true) + ' * ' + (tb[0] < 0 ? '(' + termMath(tb[0], tb[1], true) + ')' : termMath(tb[0], tb[1], true)) + ' = ' + termMath(c, e, true) + ']]');
-      });
-    });
-    var val1 = function (q) { return Object.keys(q).reduce(function (s, k) { return s + q[k]; }, 0); };
     var partial = L.pMul(A, L.polyFromTerms([p.B[0]]));
     return {
       prompt: 'Sendo [[A(x) = ' + termsMath(p.A) + ']] e [[B(x) = ' + termsMath(p.B) + ']], calcule [[A * B]].',
       items: [{
         key: 'u',
         answer: { type: 'polynomial', coeffs: prod, simplified: true },
-        hint: { rules: ['distributiva', 'potencias'], tip: 'Multiplique <b>cada</b> termo de [[A]] por <b>cada</b> termo de [[B]] (são 4 multiplicações). Depois junte os semelhantes.' },
+        hint: { rules: ['distributiva', 'potencias'], tip: 'Faça o <b>chuveirinho</b>: cada termo de [[A]] multiplica cada termo de [[B]] (são 4 multiplicações). Depois junte os termos parecidos.' },
         hints: [
           { when: function (q) { return L.polyEqual(q, L.pAdd(A, B, 1)); }, msg: 'Isso é [[A + B]] (soma). A questão pede a <b>multiplicação</b>.' },
           { when: function (q) { return L.polyEqual(q, partial); }, msg: 'Faltou multiplicar pelo segundo termo de [[B(x)]]: são 4 multiplicações.' }
         ],
         final: '[[' + L.polyToMath(prod) + ']]',
-        steps: {
-          ask: '<b>Multiplicar</b> [[A(x)]] por [[B(x)]].',
-          concept: '<b>Distributiva</b>: cada termo do primeiro multiplica cada termo do segundo. Na multiplicação de potências de mesma base, <b>somamos</b> os expoentes.',
-          data: '[[A(x) = ' + termsMath(p.A) + ']] e [[B(x) = ' + termsMath(p.B) + ']].',
-          s1: 'As 4 multiplicações:<div class="calc">' + lines.slice(0, 2).join(' &nbsp; ') + '</div><div class="calc">' + lines.slice(2).join(' &nbsp; ') + '</div>',
-          s2: 'Juntando e somando os semelhantes:<div class="calc">[[' + termsMath(raw) + ' = ' + L.polyToMath(prod) + ']]</div>',
-          final: '[[A * B = ' + L.polyToMath(prod) + ']]',
-          check: 'Testando com [[x = 1]]: [[A(1) = ' + val1(A) + ']], [[B(1) = ' + val1(B) + ']] e [[' + val1(A) + ' * ' + (val1(B) < 0 ? '(' + val1(B) + ')' : val1(B)) + ' = ' + val1(prod) + ']]. Na resposta, com [[x = 1]], também dá ' + br(val1(prod)) + ' ✓.'
-        }
+        steps: window.GM_STEPS.polyMul(p.A, p.B)
       }]
     };
   };
