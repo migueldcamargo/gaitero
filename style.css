@@ -277,7 +277,20 @@ body.immersive #view { max-width: 760px; padding: 0; }
 .sim-banner.ok { background: var(--green-l); color: var(--green-ink); }
 .sim-banner.bad { background: var(--red-l); color: var(--red-ink); }
 .sheet-foot .btn-ghost + .btn-primary { flex: 1; }
-.sim-retry-link { display: block; margin-top: 6px; font-size: 15px; }
+.sim-retry-btn { margin-bottom: 14px; font-size: 17px; min-height: 54px; }
+/* Números do topo no simulado: navega entre as questões; verde claro = respondida (sem dizer se está certa) */
+.sim-nums { display: flex; justify-content: center; gap: 8px; margin-bottom: 10px; }
+.sim-num {
+  width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--line-2); background: var(--surface); color: var(--ink-2);
+  font: 800 17px/1 var(--font-display); cursor: pointer; box-shadow: 0 3px 0 var(--line-2);
+}
+.sim-num.done { background: var(--green-l); border-color: var(--green); color: var(--green-ink); box-shadow: 0 3px 0 var(--green); }
+.sim-num.on { background: var(--blue); border-color: var(--blue-d); color: #fff; box-shadow: 0 3px 0 var(--blue-d); }
+.sim-num.miss { border-color: var(--red); box-shadow: 0 3px 0 var(--red-d); animation: sim-shake .4s ease-in-out 2; }
+@keyframes sim-shake { 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
+.sim-foot { display: flex; gap: 10px; }
+.sim-foot .btn { flex: 1; }
+.sim-foot .btn-ghost { flex: 0 0 auto; }
 
 .grade { background: var(--surface); border: 2px solid var(--line); border-radius: 18px; padding: 10px 12px; display: grid; gap: 8px; }
 .grade-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }

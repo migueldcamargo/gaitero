@@ -373,10 +373,12 @@
       '<header class="qhead">' +
       '<a class="icon-btn" href="#simulado" data-go="simulado" aria-label="Sair do simulado (dá para continuar depois)">✕</a>' +
       '<div class="qhead-mid"><div class="qhead-title">Simulado · ' + SIM_SCOPES[sim.scope] + '</div>' +
-      '<div class="bar bar-sm" role="progressbar" aria-label="Progresso do simulado" aria-valuemin="0" aria-valuemax="' + SIM_N + '" aria-valuenow="' + sim.i + '"><i style="width:' + (sim.i / SIM_N * 100) + '%"></i></div></div>' +
+      '<div class="bar bar-sm" role="progressbar" aria-label="Questões respondidas" aria-valuemin="0" aria-valuemax="' + SIM_N + '"><i id="sim-bar"></i></div></div>' +
       '<span class="chip sim-count" aria-label="Questão ' + (sim.i + 1) + ' de ' + SIM_N + '"><b>' + (sim.i + 1) + '</b>/' + SIM_N + '</span>' +
       '</header>' +
       '<div class="qbody">' +
+      '<nav class="sim-nums" aria-label="Ir para a questão">' + sim.list.map((s, k) =>
+        '<button class="sim-num' + (k === sim.i ? ' on' : '') + '" data-act="sim-go" data-i="' + k + '" aria-label="Questão ' + (k + 1) + '"' + (k === sim.i ? ' aria-current="step"' : '') + '>' + (k + 1) + '</button>').join('') + '</nav>' +
       '<article class="statement">' +
       '<div class="st-top"><div class="st-skill">Questão ' + (sim.i + 1) + ' de ' + SIM_N + (lastQ ? ' · <b>a última!</b>' : '') + '</div></div>' +
       '<p class="st-prompt">' + fmt(E.ver.prompt) + '</p>' +
@@ -388,37 +390,67 @@
       '<div class="answer" id="answer">' + fieldsHTML(item, id) + '</div>' +
       '<div class="msg" id="msg" role="status" aria-live="polite"></div>' +
       '</div>' +
-      '<footer class="qfoot" id="qfoot"><button class="btn btn-primary btn-block" data-act="sim-next">' + (lastQ ? 'FINALIZAR SIMULADO' : 'PRÓXIMA QUESTÃO →') + '</button></footer>' +
+      '<footer class="qfoot sim-foot" id="qfoot">' +
+      '<button class="btn btn-ghost" data-act="sim-prev"' + (sim.i === 0 ? ' disabled' : '') + '>← ANTERIOR</button>' +
+      (lastQ ? '<button class="btn btn-primary" data-act="sim-submit">ENTREGAR SIMULADO</button>' : '<button class="btn btn-primary" data-act="sim-next">PRÓXIMA →</button>') +
+      '</footer>' +
       '</section>';
     const a = item.answer, d = draftOf(id);
     QS.sel = a.type === 'choice' ? d : null;
     QS.multi = a.type === 'multiSelect' ? new Set(d || []) : null;
     updatePreview();
+    simPaintNums();
   }
-  // Guarda a resposta sem dizer se está certa: o resultado só aparece no fim.
-  function simNext() {
+  // Situação da resposta i do simulado: 'ok' (respondida), 'empty' (em branco) ou 'invalid' (incompleta).
+  function simAnswerState(sim, i) {
+    const E = simEntry(sim, i), item = E.ver.items[E.idx];
+    const d = S.drafts['sim.' + iid(E.exam, E.q, E.ver.id, item)];
+    const st = d == null ? 'empty' : L.validate(item, d).status;
+    return st === 'empty' || st === 'invalid' ? st : 'ok';
+  }
+  // Números do topo: verde claro = já respondida (sem dizer se está certa). Barra = quantas respondidas.
+  function simPaintNums() {
     const sim = S.sim;
-    if (!sim || sim.done || !QS || !QS.sim) return;
-    const item = curItem(), ans = collect(), res = L.validate(item, ans);
-    if (res.status === 'empty' || res.status === 'invalid') {
-      showMsg(res.status === 'empty' ? 'Responda antes de ir para a próxima 😉' : fmt(res.message), res.status === 'empty' ? 'info' : 'warn');
-      const f = $('#answer .field'); if (f && res.status === 'empty' && !f.value) f.focus();
-      return;
-    }
-    S.drafts[curId()] = ans;
-    markStudy(curId());
-    sim.ans[sim.i] = ans;
-    sim.ok[sim.i] = res.status === 'correct';
-    sim.i++;
-    if (sim.i >= SIM_N) {
-      sim.done = true; save();
-      go('simulado-fim');
-      if (simGrade(sim) >= 8) { beep('ok'); confetti(); }
-      return;
-    }
-    save();
+    if (!sim || route().name !== 'simq') return;
+    let n = 0;
+    $$('.sim-num').forEach((b, k) => { const ok = simAnswerState(sim, k) === 'ok'; if (ok) n++; b.classList.toggle('done', ok); b.classList.remove('miss'); });
+    const bar = $('#sim-bar'); if (bar) bar.style.width = (n / SIM_N * 100) + '%';
+  }
+  // Andar entre as questões: pode pular e voltar; a resposta fica guardada.
+  function simGo(i) {
+    const sim = S.sim;
+    if (!sim || sim.done || i < 0 || i >= SIM_N) return;
+    if (QS && QS.sim) S.drafts[curId()] = collect();
+    sim.i = i; save();
     renderSimQuestion();
     window.scrollTo(0, 0);
+  }
+  // Entregar: só com todas respondidas. O resultado (certo/errado) só aparece agora.
+  function simSubmit() {
+    const sim = S.sim;
+    if (!sim || sim.done || !QS || !QS.sim) return;
+    S.drafts[curId()] = collect();
+    const miss = [], bad = [];
+    sim.list.forEach((s, k) => { const st = simAnswerState(sim, k); if (st === 'empty') miss.push(k); else if (st === 'invalid') bad.push(k); });
+    if (miss.length || bad.length) {
+      const names = arr => arr.map(k => '<b>' + (k + 1) + '</b>').join(arr.length > 1 ? ', ' : '').replace(/, (?=[^,]*$)/, ' e ');
+      showMsg('Para entregar, responda todas as questões. ' +
+        (miss.length ? (miss.length > 1 ? 'Faltam as questões ' : 'Falta a questão ') + names(miss) + '. ' : '') +
+        (bad.length ? (bad.length > 1 ? 'As questões ' + names(bad) + ' estão incompletas. ' : 'A questão ' + names(bad) + ' está incompleta. ') : '') +
+        'Toque no número lá em cima para ir até ' + (miss.length + bad.length > 1 ? 'elas.' : 'ela.'), 'warn');
+      $$('.sim-num').forEach((b, k) => b.classList.toggle('miss', miss.indexOf(k) >= 0 || bad.indexOf(k) >= 0));
+      save();
+      return;
+    }
+    sim.list.forEach((s, k) => {
+      const E = simEntry(sim, k), item = E.ver.items[E.idx], id = 'sim.' + iid(E.exam, E.q, E.ver.id, item);
+      sim.ans[k] = S.drafts[id];
+      sim.ok[k] = L.validate(item, S.drafts[id]).status === 'correct';
+      markStudy(id);
+    });
+    sim.done = true; save();
+    go('simulado-fim');
+    if (simGrade(sim) >= 8) { beep('ok'); confetti(); }
   }
   function renderSimEnd() {
     const sim = S.sim;
@@ -447,8 +479,8 @@
     const sim = S.sim, E = simEntry(sim, i), item = E.ver.items[E.idx], ok = sim.ok[i];
     QS = { exam: E.exam, q: E.q, key: qid(E.exam, E.q), ver: E.ver, idx: E.idx, sim: true, simI: i, feedback: null, sel: null, multi: null, solStep: 0 };
     const banner = '<div class="sim-banner ' + (ok ? 'ok' : 'bad') + '">' + (ok ? '✓ Você acertou! Sua resposta: ' : '✗ Sua resposta: ') + '<b>' + ansText(item, sim.ans[i]) + '</b>' +
-      (ok ? '' : '<br>Resposta certa: <b>' + fmt(item.final) + '</b>') +
-      '<button class="link-btn sim-retry-link" data-act="sim-retry">🔀 Tentar fazer novamente</button></div>';
+      (ok ? '' : '<br>Resposta certa: <b>' + fmt(item.final) + '</b>') + '</div>' +
+      '<button class="btn btn-primary btn-block sim-retry-btn" data-act="sim-retry"><span aria-hidden="true">🔀</span> TENTAR FAZER NOVAMENTE</button>';
     openSolution({ where: 'Simulado · Questão ' + (i + 1) + ' (' + E.exam.title + ' · Questão ' + E.q.n + ')', banner });
   }
   // Outra variação da mesma questão (nunca a que caiu no simulado), no modo treino.
@@ -590,7 +622,7 @@
     const f = $('#f0', root);
     return f ? f.value : '';
   }
-  function persistDraft() { S.drafts[curId()] = collect(); saveSoon(); }
+  function persistDraft() { S.drafts[curId()] = collect(); saveSoon(); if (QS.sim) simPaintNums(); }
   function updatePreview() {
     const p = $('#preview'), f = $('#f0');
     if (!p || !f) return;
@@ -1000,7 +1032,10 @@
       else startSim(sc);
     },
     'sim-continue': () => go('simulado-q'),
-    'sim-next': simNext,
+    'sim-next': () => simGo(S.sim.i + 1),
+    'sim-prev': () => simGo(S.sim.i - 1),
+    'sim-go': el => simGo(+el.dataset.i),
+    'sim-submit': simSubmit,
     'sim-open': el => simOpen(+el.dataset.i),
     'sim-retry': simRetry
   };
@@ -1065,7 +1100,11 @@
       if (m) { m.remove(); if (!$('#sheet-root').children.length) document.body.classList.remove('no-scroll'); } else closeSheets();
       return;
     }
-    if (e.key === 'Enter' && route().name === 'simq' && !$('#sheet-root').children.length && e.target.matches && e.target.matches('#answer .field')) { e.preventDefault(); simNext(); return; }
+    if (e.key === 'Enter' && route().name === 'simq' && !$('#sheet-root').children.length && e.target.matches && e.target.matches('#answer .field')) {
+      e.preventDefault();
+      if (S.sim.i === SIM_N - 1) simSubmit(); else simGo(S.sim.i + 1);
+      return;
+    }
     if (e.key !== 'Enter' || !QS || route().name !== 'question') return;
     if ($('#sheet-root').children.length) return;
     if (e.target.matches && e.target.matches('#answer .field')) { e.preventDefault(); if (!QS.feedback) doCheck(); else if (QS.feedback.ok) doContinue(); else retry(); }
