@@ -31,15 +31,7 @@
           { when: function () { return true; }, msg: 'A soma dá ' + S + ', mas os números precisam ser consecutivos: um logo depois do outro.' }
         ],
         final: a + ', ' + m + ' e ' + c,
-        steps: {
-          ask: 'Descobrir <b>três números seguidos</b> que, somados, dão <b>' + S + '</b>.',
-          concept: '<b>Números consecutivos</b> vêm um depois do outro e aumentam de 1 em 1: [[x]], [[x + 1]], [[x + 2]].',
-          data: 'São <b>3 números</b> seguidos e a soma é <b>' + S + '</b>.',
-          s1: 'O número do meio fica no centro: dividimos a soma igualmente por 3.<div class="calc">[[' + S + ' ÷ 3 = ' + m + ']]</div>',
-          s2: 'Agora o anterior e o próximo:<div class="calc">[[' + m + ' - 1 = ' + a + ']] &nbsp;e&nbsp; [[' + m + ' + 1 = ' + c + ']]</div><p class="aside">Com equação: [[x + (x + 1) + (x + 2) = ' + S + ']] → [[3x + 3 = ' + S + ']] → [[3x = ' + (S - 3) + ']] → [[x = ' + a + ']].</p>',
-          final: 'Os números são <b>' + a + ', ' + m + ' e ' + c + '</b>.',
-          check: '[[' + a + ' + ' + m + ' + ' + c + ' = ' + S + ']] ✓ e eles são consecutivos ✓.'
-        }
+        steps: window.GM_STEPS.consec({ S: S, step: 1, first: a, kind: 'consecutivos' })
       }]
     };
   };
@@ -151,15 +143,25 @@
           { when: kn, msg: 'Esse é o <b>' + w + '</b> do número! Falta dividir por ' + k + '.' }
         ],
         final: String(n),
-        steps: {
-          ask: 'Descobrir um número escondido (que é <b>ímpar</b>).',
-          concept: '<b>' + w[0].toUpperCase() + w.slice(1) + '</b> = ' + k + ' vezes. <b>Número ímpar</b>: 1, 3, 5, 7, 9...',
-          data: 'Chamando o número de [[x]]:<div class="calc">[[' + k + 'x ' + (plus ? '+' : '-') + ' ' + b + ' = ' + c + ']]</div>',
-          s1: 'Desfazer o "<b>' + (plus ? '+' : '−') + b + '</b>": ' + (plus ? 'tiramos' : 'somamos') + ' ' + b + ' dos dois lados.<div class="calc">[[' + k + 'x = ' + c + ' ' + (plus ? '-' : '+') + ' ' + b + ']] → [[' + k + 'x = ' + kn + ']]</div>',
-          s2: 'Desfazer o "<b>vezes ' + k + '</b>": dividimos por ' + k + '.<div class="calc">[[x = ' + kn + ' ÷ ' + k + ' = ' + n + ']]</div>',
-          final: 'O número é <b>' + n + '</b>.',
-          check: '[[' + k + ' * ' + n + ' = ' + kn + ']] e [[' + kn + ' ' + (plus ? '+' : '-') + ' ' + b + ' = ' + c + ']] ✓. E ' + n + ' é ímpar ✓.'
-        }
+        steps: (function () {
+          // Mesmo roteiro da original: o que é dobro/triplo → chama de x → monta a equação → resolve linha por linha.
+          var W = w[0].toUpperCase() + w.slice(1), maisMenos = plus ? 'mais' : 'menos';
+          var eq = k + 'x ' + (plus ? '+' : '-') + ' ' + b + ' = ' + c;
+          return {
+            intro: { t: 'O que é ' + w + '?', b: '<b>' + W + '</b> é multiplicar por <b>' + k + '</b>. Por exemplo: o ' + w + ' de 5 é [[' + k + ' * 5 = ' + 5 * k + ']].' },
+            ask: 'Nesse caso, não interessa se o número é ímpar ou par. O que interessa é que o <b>' + w + '</b> de um número <b>' + maisMenos + ' ' + b + '</b> é igual a <b>' + c + '</b>. Qual é esse número?',
+            data: 'Vamos chamar esse número de [[x]], porque é o que a gente quer descobrir.',
+            s1: 'O ' + w + ' de [[x]] é [[' + k + 'x]]. Então a frase "o ' + w + ' de um número ' + maisMenos + ' ' + b + ' é igual a ' + c + '" vira:<div class="calc">[[' + eq + ']]</div>',
+            s2: 'Agora é só resolver, uma conta de cada vez:<div class="calc calc-lines">' +
+              '<span>[[' + eq + ']]</span>' +
+              '<span>[[' + k + 'x = ' + c + ' ' + (plus ? '-' : '+') + ' ' + b + ']] <small>← o ' + (plus ? '+' : '−') + b + ' muda de lado e vira ' + (plus ? '−' : '+') + b + '</small></span>' +
+              '<span>[[' + k + 'x = ' + kn + ']]</span>' +
+              '<span>[[x = ' + kn + ' ÷ ' + k + ']] <small>← o ' + k + ' que multiplica muda de lado e divide</small></span>' +
+              '<span>[[x = ' + n + ']]</span></div>',
+            final: 'O número é <b>' + n + '</b>.',
+            check: 'O ' + w + ' de ' + n + ' é [[' + k + ' * ' + n + ' = ' + kn + ']], e [[' + kn + ' ' + (plus ? '+' : '-') + ' ' + b + ' = ' + c + ']] ✓. (E ' + n + ' é mesmo ímpar, como a questão falou ✓.)'
+          };
+        })()
       }]
     };
   };
@@ -180,15 +182,7 @@
           { when: function () { return true; }, msg: 'A soma está certa, mas precisam ser ' + p.kind + ' <b>seguidos</b> (pulando de 2 em 2).' }
         ],
         final: a + ', ' + m + ' e ' + c,
-        steps: {
-          ask: 'Achar <b>três números ' + p.kind + ' seguidos</b> cuja soma é <b>' + S + '</b>.',
-          concept: 'Números ' + p.kind + ' consecutivos pulam de <b>2 em 2</b>: [[x]], [[x + 2]], [[x + 4]].',
-          data: 'São 3 números ' + p.kind + ' seguidos e a soma é ' + S + '.',
-          s1: 'O do meio fica no centro:<div class="calc">[[' + S + ' ÷ 3 = ' + m + ']]</div>' + m + ' é ' + (odd ? 'ímpar' : 'par') + ' ✓.',
-          s2: 'Pulamos <b>2 para trás</b> e <b>2 para frente</b>:<div class="calc">[[' + m + ' - 2 = ' + a + ']] &nbsp;e&nbsp; [[' + m + ' + 2 = ' + c + ']]</div><p class="aside">Com equação: [[3x + 6 = ' + S + ']] → [[3x = ' + (S - 6) + ']] → [[x = ' + a + ']].</p>',
-          final: 'Os números são <b>' + a + ', ' + m + ' e ' + c + '</b>.',
-          check: '[[' + a + ' + ' + m + ' + ' + c + ' = ' + S + ']] ✓, todos ' + p.kind + ' ✓, de 2 em 2 ✓.'
-        }
+        steps: window.GM_STEPS.consec({ S: S, step: 2, first: a, kind: p.kind })
       }]
     };
   };
@@ -209,16 +203,7 @@
           { when: V / h, msg: 'Você dividiu só pela altura. Lembre que o comprimento é ' + k + ' × a largura.' }
         ],
         final: C + ' cm',
-        steps: {
-          ask: 'A medida do <b>comprimento</b> do paralelepípedo, em cm.',
-          concept: 'Volume do paralelepípedo (caixa) = comprimento × largura × altura.',
-          data: 'Altura = <b>' + h + ' cm</b>. Comprimento = <b>' + k + ' vezes</b> a largura. Volume = <b>' + V + ' cm³</b>. Largura = [[L]], comprimento = [[' + k + 'L]].',
-          fig: FIG.box(k, h),
-          s1: 'Montamos o volume:<div class="calc">[[' + k + 'L * L * ' + h + ' = ' + V + ']]</div><div class="calc">[[' + (k * h) + ' * L * L = ' + V + ']] → [[L * L = ' + V + ' ÷ ' + (k * h) + ' = ' + L2 + ']]</div>',
-          s2: '[[' + Lw + ' * ' + Lw + ' = ' + L2 + ']], então a largura é [[L = ' + Lw + ']] cm.<div class="calc">comprimento = [[' + k + ' * ' + Lw + ' = ' + C + ']] cm</div>',
-          final: 'O comprimento mede <b>' + C + ' cm</b>.',
-          check: '[[' + C + ' * ' + Lw + ' * ' + h + ' = ' + V + ']] cm³ ✓.'
-        }
+        steps: window.GM_STEPS.volume(h, k, V)
       }]
     };
   };
@@ -227,7 +212,7 @@
   // Q6 — porcentagem (2 itens)
   G.p1q6 = function (p) {
     var pa = p.a.p, T = p.a.T, va = pa * T / 100;
-    var part = p.b.part, tot = p.b.total, g = gcd(part, tot), dec = part / tot, vb = dec * 100;
+    var part = p.b.part, tot = p.b.total, dec = part / tot, vb = dec * 100;
     return {
       prompt: 'Preencha as lacunas com valor correto.',
       items: [
@@ -240,15 +225,7 @@
             { when: T - va, msg: 'Você tirou ' + pa + '% de ' + T + '. A pergunta é quanto <b>vale</b> ' + pa + '% de ' + T + '.' }
           ],
           final: br(va),
-          steps: {
-            ask: 'Quanto é <b>' + pa + '% de ' + T + '</b>.',
-            concept: '<b>Porcentagem</b> = partes de 100. ' + pa + '% = [[frac{' + pa + '}{100}]].',
-            data: 'Porcentagem <b>' + pa + '%</b>, total <b>' + T + '</b>.',
-            s1: 'Macete: 10% de ' + T + ' é [[' + T + ' ÷ 10 = ' + br(T / 10) + ']], e 1% é [[' + T + ' ÷ 100 = ' + br(T / 100) + ']].',
-            s2: 'Então ' + pa + '% é ' + pa + ' vezes o 1%:<div class="calc">[[' + pa + ' * ' + br(T / 100) + ' = ' + br(va) + ']]</div><p class="aside">Ou direto: [[frac{' + pa + '}{100} * ' + T + ' = ' + br(va) + ']].</p>',
-            final: pa + '% de ' + T + ' é <b>' + br(va) + '</b>.',
-            check: br(va) + ' é ' + (pa < 50 ? 'menos' : 'mais') + ' que a metade de ' + T + ' — faz sentido, porque ' + pa + '% é ' + (pa < 50 ? 'menos' : 'mais') + ' que 50% ✓.'
-          }
+          steps: window.GM_STEPS.pctOf(pa, T)
         },
         {
           key: 'b', label: 'b)', prompt: part + ' representa <span class="blank">____</span> % de ' + tot,
@@ -259,15 +236,7 @@
             { when: tot / part * 100, msg: 'Você fez ' + tot + ' ÷ ' + part + '. A parte (' + part + ') vai em cima.' }
           ],
           final: br(vb) + '%',
-          steps: {
-            ask: 'Que <b>porcentagem de ' + tot + '</b> o número <b>' + part + '</b> representa.',
-            concept: 'Para saber "quanto por cento": <b>parte ÷ total</b>, e depois <b>× 100</b>.',
-            data: 'Parte = <b>' + part + '</b>. Total = <b>' + tot + '</b>.',
-            s1: 'Fração parte/total' + (g > 1 ? ', simplificando por ' + g : '') + ':<div class="calc">[[frac{' + part + '}{' + tot + '}' + (g > 1 ? ' = frac{' + part / g + '}{' + tot / g + '}' : '') + ']]</div>',
-            s2: 'Dividimos e multiplicamos por 100:<div class="calc">[[' + part / g + ' ÷ ' + tot / g + ' = ' + br(dec) + ']] → [[' + br(dec) + ' * 100 = ' + br(vb) + ']]</div>',
-            final: part + ' representa <b>' + br(vb) + '%</b> de ' + tot + '.',
-            check: br(vb) + '% de ' + tot + ' = [[' + br(dec) + ' * ' + tot + ' = ' + part + ']] ✓.'
-          }
+          steps: window.GM_STEPS.pctWhich(part, tot)
         }
       ]
     };
@@ -292,14 +261,7 @@
           { when: P0 + loss, msg: 'O preço <b>reduziu</b>, então tem que ficar menor que ' + money(P0) + '.' }
         ],
         final: money(fin),
-        steps: {
-          ask: 'O <b>preço atual</b> depois de perder ' + r + '% do valor.',
-          data: 'Preço inicial: <b>' + money(P0) + '</b>. Redução: <b>' + r + '%</b>.',
-          s1: 'Quanto perdeu? ' + r + '% de ' + br(P0) + ':<div class="calc">[[frac{' + r + '}{100} * ' + br(P0) + ' = ' + br(loss) + ']]</div>',
-          s2: 'Tiramos a perda do preço inicial:<div class="calc">[[' + br(P0) + ' - ' + br(loss) + ' = ' + br(fin) + ']]</div><p class="aside">Atalho: se perdeu ' + r + '%, sobraram ' + (100 - r) + '%. [[' + br((100 - r) / 100) + ' * ' + br(P0) + ' = ' + br(fin) + ']].</p>',
-          final: 'Agora custa <b>' + money(fin) + '</b>.',
-          check: '[[' + br(fin) + ' + ' + br(loss) + ' = ' + br(P0) + ']] ✓, e o preço ficou menor ✓.'
-        }
+        steps: window.GM_STEPS.discount(P0, r)
       }]
     };
   };
@@ -312,8 +274,6 @@
   // Q8 — média simples com tabela
   G.p1q8 = function (p) {
     var ns = p.notas, n = ns.length, S = sum(ns), mean = S / n;
-    var chain = [], acc = ns[0];
-    for (var i = 1; i < n; i++) { chain.push('[[' + acc + ' + ' + ns[i] + ' = ' + (acc + ns[i]) + ']]'); acc += ns[i]; }
     var mid = (Math.min.apply(null, ns) + Math.max.apply(null, ns)) / 2;
     var hints = [{ when: S, msg: 'Essa é a <b>soma</b> das notas. Agora divida pelo número de alunos.' }];
     if (abs(mid - mean) > 0.01) hints.push({ when: mid, msg: 'Essa é a média só da menor e da maior nota. Use as notas de todos.' });
@@ -326,15 +286,7 @@
         hint: { rules: ['media-simples'], tip: 'Some todas as notas da tabela e conte quantos alunos são.' },
         hints: hints,
         final: br(mean),
-        steps: {
-          ask: 'A <b>média aritmética</b> das notas.',
-          concept: 'Média = soma de todos os valores ÷ quantidade de valores.',
-          data: 'São <b>' + n + ' alunos</b>, com notas ' + ns.join(', ') + '.',
-          s1: 'Somamos as notas, uma de cada vez:<div class="calc">' + chain.join(' → ') + '</div>',
-          s2: 'Dividimos pela quantidade de alunos:<div class="calc">[[' + S + ' ÷ ' + n + ' = ' + br(mean) + ']]</div>',
-          final: 'A média é <b>' + br(mean) + '</b>.',
-          check: 'A média fica entre a menor nota (' + Math.min.apply(null, ns) + ') e a maior (' + Math.max.apply(null, ns) + ') ✓.'
-        }
+        steps: window.GM_STEPS.media(ns)
       }]
     };
   };
@@ -362,15 +314,7 @@
           { when: S, msg: 'Essa é a soma de todas as idades. Divida pelo total de ' + p.noun + '.' }
         ],
         final: exact ? br(mean) + ' anos' : '[[frac{' + S + '}{' + tot + '} ≈ ' + br(mean, 2) + ']] anos',
-        steps: {
-          ask: 'A <b>média das idades</b> de todos os ' + p.noun + '.',
-          concept: 'Quando um valor se repete, multiplicamos o valor pela quantidade de vezes que ele aparece (<b>média ponderada</b>).',
-          data: txt.join('; ') + '.<div class="calc">Total: [[' + gs.map(function (g) { return g[0]; }).join(' + ') + ' = ' + tot + ']]</div>',
-          s1: 'Somamos as idades de <b>todos</b>:<div class="calc">' + gs.map(function (g) { return '[[' + g[0] + ' * ' + g[1] + ' = ' + g[0] * g[1] + ']]'; }).join(' &nbsp; ') + '</div><div class="calc">[[' + gs.map(function (g) { return g[0] * g[1]; }).join(' + ') + ' = ' + S + ']]</div>',
-          s2: 'Dividimos pelo total:<div class="calc">[[' + S + ' ÷ ' + tot + (exact ? ' = ' : ' ≈ ') + br(mean, exact ? undefined : 2) + ']]</div>',
-          final: 'A média é ' + (exact ? '<b>' + br(mean) + ' anos</b>' : '[[frac{' + S + '}{' + tot + '}]], aproximadamente <b>' + br(mean, 2) + ' anos</b>') + '.',
-          check: 'A média fica entre a menor idade (' + Math.min.apply(null, gs.map(function (g) { return g[1]; })) + ') e a maior (' + Math.max.apply(null, gs.map(function (g) { return g[1]; })) + ') ✓, mais perto da idade do grupo maior ✓.'
-        }
+        steps: window.GM_STEPS.mediaGrupos(gs, p.noun)
       }]
     };
   };
@@ -380,9 +324,12 @@
     { ctx: 'Em um curso de robótica', noun: 'alunos', groups: [[5, 13], [15, 14], [10, 16]] }
   ];
 
-  // Q10 — reflexão com eixo vertical ou horizontal
+  // Q10 — reflexão de triângulo, trapézio ou losango, com a reta em pé ou deitada.
+  // Alternativas erradas possíveis (cada variação escolhe 5 que não fiquem iguais à certa):
+  // transl/transl2 = só arrastou · subiu/desceu = espelhou mas saiu da altura · perto = distância errada
+  // rot = girou meia volta · flip = virou para o lado errado. (Losango: girar ou virar coincidiria com a certa.)
   function reflOptions(p) {
-    var V = p.axis === 'v', ax = V ? 0 : 1, par = V ? 1 : 0, k = p.k;
+    var V = p.axis === 'v', ax = V ? 0 : 1, par = V ? 1 : 0, k = p.k, nome = p.kind;
     var refl = function (q) { var r = q.slice(); r[ax] = 2 * k - q[ax]; return r; };
     var mean = function (arr, i) { return sum(arr.map(function (q) { return q[i]; })) / arr.length; };
     var shift = function (pts, i, d) { return pts.map(function (q) { var r = q.slice(); r[i] += d; return r; }); };
@@ -393,59 +340,52 @@
     var flipPar = function (pts) { return pts.map(function (q) { var r = q.slice(); r[par] = 2 * c - q[par]; return r; }); };
     var minD = Math.min.apply(null, img.map(function (q) { return abs(q[ax] - k); }));
     var side = Math.sign(img[0][ax] - k);
+    var arrastou = 'Esse ' + nome + ' foi só <b>arrastado</b> (translação): não ficou espelhado. Na reflexão, o ponto mais perto da reta continua mais perto do outro lado.';
     return {
       certa: { pts: img },
-      transl: { pts: transl, hint: 'Esse triângulo foi só <b>arrastado</b> (translação): não ficou espelhado. Na reflexão, o ponto mais perto da reta continua mais perto do outro lado.' },
-      subiu: { pts: shift(img, par, 2), hint: V ? 'O formato espelhado está certo, mas o triângulo <b>subiu</b> 2 quadradinhos. Cada ponto deve continuar na mesma altura.' : 'O formato espelhado está certo, mas o triângulo <b>andou para o lado</b> 2 quadradinhos. Na reflexão em reta deitada, cada ponto continua na mesma coluna.' },
+      transl: { pts: transl, hint: arrastou },
+      transl2: { pts: shift(transl, par, 3), hint: arrastou },
+      subiu: { pts: shift(img, par, 2), hint: V ? 'O formato espelhado está certo, mas o ' + nome + ' <b>subiu</b> 2 quadradinhos. Cada ponto deve continuar na mesma altura.' : 'O formato espelhado está certo, mas o ' + nome + ' <b>andou para o lado</b> 2 quadradinhos. Na reflexão em reta deitada, cada ponto continua na mesma coluna.' },
+      desceu: { pts: shift(img, par, -2), hint: V ? 'O formato espelhado está certo, mas o ' + nome + ' <b>desceu</b> 2 quadradinhos. Cada ponto deve continuar na mesma altura.' : 'O formato espelhado está certo, mas o ' + nome + ' <b>andou para o lado</b> 2 quadradinhos. Na reflexão em reta deitada, cada ponto continua na mesma coluna.' },
       rot: { pts: flipPar(img), hint: 'Esse foi <b>girado</b> meia volta (rotação). Na reflexão, cada ponto só atravessa a reta, sem ' + (V ? 'mudar de altura' : 'andar para o lado') + '.' },
       perto: { pts: shift(img, ax, minD >= 3 ? -2 * side : 2 * side), hint: 'Está espelhado, mas as <b>distâncias</b> até a reta <i>e</i> não batem. Conte os quadradinhos de cada ponto até a reta.' },
       flip: { pts: flipPar(transl), hint: V ? 'Esse foi virado de <b>cima para baixo</b>. O "espelho" aqui é a reta <i>e</i>, que está em pé.' : 'Esse foi virado de <b>lado</b>. O "espelho" aqui é a reta <i>e</i>, que está deitada.' }
     };
   }
   G.p1q10 = function (p) {
-    var V = p.axis === 'v', ax = V ? 0 : 1, k = p.k;
+    var V = p.axis === 'v', k = p.k;
     var opts = reflOptions(p);
     var all = p.orig.slice();
-    Object.keys(opts).forEach(function (id) { all = all.concat(opts[id].pts); });
+    p.opts.forEach(function (id) { all = all.concat(opts[id].pts); });
     var xs = all.map(function (q) { return q[0]; }).concat(V ? [k] : []), ys = all.map(function (q) { return q[1]; }).concat(V ? [] : [k]);
-    var cfg = { axis: p.axis, k: k, orig: p.orig, bounds: [Math.min.apply(null, xs) - 2, Math.max.apply(null, xs) + 2, Math.min.apply(null, ys) - 2, Math.max.apply(null, ys) + 2] };
+    var cfg = { axis: p.axis, k: k, orig: p.orig, names: p.names, bounds: [Math.min.apply(null, xs) - 2, Math.max.apply(null, xs) + 2, Math.min.apply(null, ys) - 2, Math.max.apply(null, ys) + 2] };
     var letters = 'ABCDEF';
-    var options = p.perm.map(function (id, i) {
-      return { id: id, html: FIG.reflection(cfg, opts[id].pts, { aria: 'Opção ' + letters[i] }), hint: opts[id].hint };
+    var options = p.opts.map(function (id, i) {
+      return { id: id, html: FIG.reflection(cfg, opts[id].pts, { aria: 'Opção ' + letters[i] }), hint: opts[id].hint, pts: opts[id].pts };
     });
-    var right = letters[p.perm.indexOf('certa')];
-    var d = p.orig.map(function (q) { return abs(q[ax] - k); });
+    var right = letters[p.opts.indexOf('certa')];
+    var shapeName = p.kind + ' ' + p.names.join('');
     return {
-      prompt: 'Encontre a imagem do triângulo PQR por uma reflexão em torno da reta <i>e</i>, ambos desenhados a seguir. (Use régua!)',
+      prompt: 'Encontre a imagem do ' + shapeName + ' por uma reflexão em torno da reta <i>e</i>, ambos desenhados a seguir. (Use régua!)',
       figure: FIG.reflection(cfg, null),
-      note: 'No app, a malha quadriculada faz o papel da régua: escolha o desenho que mostra a imagem P′Q′R′ correta.',
+      note: 'No app, a malha quadriculada faz o papel da régua: escolha o desenho que mostra a imagem ' + p.names.map(function (n) { return n + '′'; }).join('') + ' correta.',
       items: [{
         key: 'u',
         answer: { type: 'choice', layout: 'figs', correct: 'certa', options: options },
         hint: { rules: ['reflexao'], tip: 'Conte quantos quadradinhos cada ponto está da reta <i>e</i> e procure a opção em que essa distância se repete do outro lado.' },
         final: 'Alternativa ' + right,
-        steps: {
-          ask: 'Encontrar a <b>imagem</b> do triângulo PQR <b>refletido</b> na reta <i>e</i>.',
-          concept: '<b>Reflexão</b> = imagem no espelho. Cada ponto vai para o outro lado da reta, na <b>mesma distância</b>, em linha <b>perpendicular</b> à reta.',
-          data: 'A reta <i>e</i> está <b>' + (V ? 'em pé (vertical)' : 'deitada (horizontal)') + '</b>. Contando os quadradinhos até ela:<div class="calc">P está a <b>' + d[0] + '</b> · Q está a <b>' + d[1] + '</b> · R está a <b>' + d[2] + '</b></div>',
-          s1: 'Para cada ponto, trace uma linha ' + (V ? '<b>deitada</b>' : '<b>em pé</b>') + ' (perpendicular à reta <i>e</i>) atravessando para o outro lado.',
-          s2: 'Do outro lado, marque a <b>mesma distância</b>: P′ a ' + d[0] + ', Q′ a ' + d[1] + ' e R′ a ' + d[2] + ' quadradinhos da reta. ' + (V ? 'A altura' : 'A posição para o lado') + ' de cada ponto não muda!',
-          fig: FIG.reflection(cfg, opts.certa.pts, { connectors: true, correct: true, aria: 'Reflexão correta com as distâncias marcadas' }),
-          final: 'A imagem correta é a da <b>alternativa ' + right + '</b>.',
-          check: 'A figura ficou espelhada, com o mesmo tamanho e a mesma distância de cada ponto até a reta ✓.'
-        }
+        steps: window.GM_STEPS.reflection(cfg, opts.certa.pts, right, shapeName)
       }]
     };
   };
   P.p1q10 = [
-    { axis: 'v', k: 8, orig: [[3, 8], [6, 4], [1, 1]], perm: ['rot', 'certa', 'transl', 'perto', 'flip', 'subiu'] },
-    { axis: 'h', k: 6, orig: [[2, 9], [8, 11], [5, 8]], perm: ['transl', 'flip', 'subiu', 'certa', 'rot', 'perto'] },
-    { axis: 'v', k: 9, orig: [[4, 2], [7, 8], [2, 6]], perm: ['perto', 'subiu', 'rot', 'flip', 'transl', 'certa'] }
+    { kind: 'triângulo', names: ['P', 'Q', 'R'], axis: 'v', k: 8, orig: [[3, 8], [6, 4], [1, 1]], opts: ['rot', 'certa', 'transl', 'perto', 'flip', 'subiu'] },
+    { kind: 'triângulo', names: ['P', 'Q', 'R'], axis: 'h', k: 6, orig: [[2, 9], [8, 11], [5, 8]], opts: ['transl', 'flip', 'subiu', 'certa', 'rot', 'perto'] },
+    { kind: 'trapézio', names: ['A', 'B', 'C', 'D'], axis: 'v', k: 10, orig: [[1, 1], [7, 1], [7, 5], [3, 5]], opts: ['subiu', 'transl', 'certa', 'flip', 'perto', 'rot'] },
+    { kind: 'losango', names: ['A', 'B', 'C', 'D'], axis: 'h', k: 5, orig: [[2, 7], [5, 8], [6, 11], [3, 10]], opts: ['transl', 'desceu', 'perto', 'subiu', 'certa', 'transl2'] }
   ];
 
   /* =========================== P2 =========================== */
-
-  var moduloConcept = '<b>Módulo</b> é a <b>distância</b> do número até o zero. Distância nunca é negativa.';
 
   // Q1 — módulo (4 itens)
   function absItem(key, n) {
@@ -456,13 +396,7 @@
       hint: { rules: ['modulo'], tip: 'Pense na distância do ' + br(n) + ' até o zero na reta numérica.' },
       hints: n !== 0 ? [{ when: -v, msg: 'O módulo é uma distância, e distância nunca é negativa.' }] : [],
       final: String(v),
-      steps: {
-        ask: 'O <b>módulo de ' + br(n) + '</b>.', concept: moduloConcept,
-        data: 'O número é <b>' + br(n) + '</b>.',
-        s1: n === 0 ? 'O zero já está no zero: a distância é 0.' : 'Na reta numérica, do ' + br(n) + ' até o 0 são <b>' + v + ' passos</b>.',
-        s2: n < 0 ? 'O módulo "tira" o sinal de menos.' : 'Número positivo (ou zero) continua igual dentro do módulo.',
-        final: '[[|' + n + '| = ' + v + ']]', check: 'Distância nunca é negativa ✓.'
-      }
+      steps: window.GM_STEPS.modulo([{ sign: '', inner: [n] }])
     };
   }
   G.p2q1 = function (p) {
@@ -484,13 +418,7 @@
           hint: { rules: ['modulo'], tip: 'Primeiro resolva a conta que está <b>dentro</b> das barras. Só depois aplique o módulo.' },
           hints: inner < 0 ? [{ when: inner, msg: 'Você resolveu a conta de dentro certinho! Mas ainda falta aplicar o módulo.' }] : [],
           final: String(cv),
-          steps: {
-            ask: 'O módulo de [[' + c[0] + ' ' + c[1] + ' ' + c[2] + ']].', concept: moduloConcept,
-            data: 'Dentro das barras tem uma conta: [[' + c[0] + ' ' + c[1] + ' ' + c[2] + ']].',
-            s1: 'Primeiro resolvemos o que está <b>dentro</b>:<div class="calc">[[' + c[0] + ' ' + c[1] + ' ' + c[2] + ' = ' + inner + ']]</div>',
-            s2: 'Depois o módulo:<div class="calc">[[|' + inner + '| = ' + cv + ']]</div>',
-            final: '[[|' + c[0] + ' ' + c[1] + ' ' + c[2] + '| = ' + cv + ']]', check: 'O resultado é positivo (ou zero), como todo módulo ✓.'
-          }
+          steps: window.GM_STEPS.modulo([{ sign: '', inner: [c[0], c[1], c[2]] }])
         },
         {
           key: 'd', label: 'd)', prompt: '[[' + dTxt + ']] =',
@@ -498,14 +426,7 @@
           hint: { rules: ['modulo'], tip: 'Calcule cada módulo separadamente. O sinal que está <b>fora</b> das barras continua valendo.' },
           hints: dHints,
           final: br(dv),
-          steps: {
-            ask: 'Calcular [[' + dTxt + ']].', concept: moduloConcept,
-            data: 'Temos dois módulos: [[|' + d[0][1] + '|]] e [[|' + d[1][1] + '|]], e sinais do lado de <b>fora</b> das barras.',
-            s1: 'Calculamos cada módulo:<div class="calc">[[|' + d[0][1] + '| = ' + abs(d[0][1]) + ']] &nbsp;e&nbsp; [[|' + d[1][1] + '| = ' + abs(d[1][1]) + ']]</div>',
-            s2: 'Os sinais de fora continuam valendo:<div class="calc">[[' + (d[0][0] === '-' ? '-' : '') + abs(d[0][1]) + ' ' + d[1][0] + ' ' + abs(d[1][1]) + ' = ' + dv + ']]</div>',
-            final: '[[' + dTxt + ' = ' + dv + ']]',
-            check: 'Cada módulo deu positivo; o resultado final pode ser negativo por causa dos sinais de fora ✓.'
-          }
+          steps: window.GM_STEPS.modulo([{ sign: d[0][0], inner: [d[0][1]] }, { sign: d[1][0], inner: [d[1][1]] }])
         }
       ]
     };
@@ -579,8 +500,8 @@
           concept: 'Divisores vêm em <b>pares</b> que, multiplicados, dão o número.',
           data: 'O número é <b>' + N + '</b>.',
           s1: 'Testamos de 1 em diante:<div class="calc">' + tested.join(' &nbsp; ') + '</div>',
-          s2: 'Os pares são: ' + pairs.join(', ') + '. Quando o próximo teste passaria da metade do caminho (os pares começariam a se repetir), podemos parar.',
-          final: 'Os divisores de ' + N + ' são <b>' + ds.join(', ') + '</b>.',
+          s2: 'Os pares são:' + L.boxes(pairs) + 'Quando o próximo teste passaria da metade do caminho (os pares começariam a se repetir), podemos parar.',
+          final: 'Os divisores de ' + N + ' são:' + L.boxes(ds, 'nbox-answer'),
           check: 'São ' + ds.length + ' divisores, e cada par multiplicado dá ' + N + ' ✓.'
         }
       }]
@@ -649,7 +570,7 @@
       steps: {
         ask: 'Juntar [[' + expr + ']] em um único monômio.',
         concept: '<b>Termos semelhantes</b>: some os números da frente; a parte com letra fica igual.',
-        data: 'Todos os termos têm a parte com letra [[x' + (e > 1 ? '^' + e : '') + ']]. Coeficientes: ' + cs.map(function (c) { return br(c); }).join(', ') + '.',
+        data: 'Todos os termos têm a parte com letra [[x' + (e > 1 ? '^' + e : '') + ']]. Coeficientes:' + L.boxes(cs.map(function (c) { return br(c); })),
         s1: 'Somamos os coeficientes, um de cada vez:<div class="calc">' + chain.join(' → ') + '</div>',
         s2: 'O coeficiente final é <b>' + br(total) + '</b>' + (abs(total) === 1 ? ' (o 1 não precisa ser escrito)' : '') + '. A parte com letra continua [[x' + (e > 1 ? '^' + e : '') + ']].',
         final: '[[' + expr + ' = ' + res + ']]',
@@ -746,41 +667,19 @@
   // Q8 — soma e produto
   function eqItem(key, cfg) {
     var a = cfg.lead, r1 = cfg.r[0], r2 = cfg.r[1], S = r1 + r2, Pd = r1 * r2;
-    var full = L.polyFromTerms([[a, 2], [-a * S, 1], [a * Pd, 0]]), monic = L.polyFromTerms([[1, 2], [-S, 1], [Pd, 0]]);
-    // pares com o produto certo, para mostrar a busca
-    var cands = [], seen = {};
-    for (var d = 1; d <= abs(Pd) && cands.length < 6; d++) {
-      if (Pd % d !== 0) continue;
-      [[d, Pd / d], [-d, -Pd / d]].forEach(function (pr) {
-        var kk = Math.min(pr[0], pr[1]) + ',' + Math.max(pr[0], pr[1]);
-        if (!seen[kk]) { seen[kk] = 1; cands.push(pr); }
-      });
-    }
-    var shown = cands.filter(function (pr) { return pr[0] + pr[1] !== S; }).slice(0, 2);
-    shown.push([r1, r2]);
+    var b = -a * S, c = a * Pd, full = L.polyFromTerms([[a, 2], [b, 1], [c, 0]]);
     var sw = [-r1, -r2];
     var hints = [];
     if ((-r1 !== r1 || -r2 !== r2) && (sw[0] + sw[1] !== S)) hints.push({ when: sw, msg: 'O produto está certo, mas a soma ficou com o sinal trocado. A soma precisa ser <b>' + br(S) + '</b>.' });
-    hints.push({ when: function (v) { return v[0] * v[1] !== Pd; }, msg: 'Confira o <b>produto</b>: as raízes multiplicadas precisam dar [[c]]' + (a !== 1 ? ' (depois de dividir a equação por ' + br(a) + ')' : '') + '.' });
-    hints.push({ when: function () { return true; }, msg: 'Confira a <b>soma</b> das duas raízes: ela é [[-b]].' });
+    hints.push({ when: function (v) { return v[0] * v[1] !== Pd; }, msg: 'Confira o <b>produto</b>: [[frac{c}{a} = frac{' + c + '}{' + a + '} = ' + Pd + ']]. As raízes multiplicadas precisam dar ' + br(Pd) + '.' });
+    hints.push({ when: function () { return true; }, msg: 'Confira a <b>soma</b>: [[frac{-b}{a} = frac{' + (-b) + '}{' + a + '} = ' + S + ']].' });
     return {
       key: key, label: key + ')', prompt: '[[' + L.polyToMath(full) + ' = 0]]',
       answer: { type: 'numberList', values: [r1, r2], ordered: false, labels: ['[[x_1]] =', '[[x_2]] ='], neg: true },
-      hint: { rules: ['soma-produto'], tip: a !== 1 ? 'O número na frente do [[x^2]] é ' + br(a) + '. Divida a equação toda por ' + br(a) + ' primeiro.' : 'O número na frente do [[x^2]] já é 1. Descubra a soma e o produto e procure os dois números.' },
+      hint: { rules: ['soma-produto'], tip: 'Aqui [[a = ' + a + ']]' + (a === -1 ? ' (é [[-x^2]])' : a === 1 ? ' (é só [[x^2]])' : '') + ', [[b = ' + b + ']] e [[c = ' + c + ']]. Soma = [[frac{-b}{a}]] e produto = [[frac{c}{a}]]. Comece pelo produto!' },
       hints: hints,
       final: '[[x = ' + Math.min(r1, r2) + ']] e [[x = ' + Math.max(r1, r2) + ']]',
-      steps: {
-        ask: 'As <b>raízes</b> da equação.',
-        concept: 'Em [[x^2 + bx + c = 0]]: Soma = [[-b]] e Produto = [[c]]. Se o número na frente do [[x^2]] não for 1, divida tudo por ele antes.',
-        data: 'Em [[' + L.polyToMath(full) + ' = 0]], o número na frente do [[x^2]] é <b>' + br(a) + '</b>.',
-        s1: (a !== 1 ? 'Dividimos tudo por ' + br(a) + ':<div class="calc">[[' + L.polyToMath(monic) + ' = 0]]</div>' : '') + '<div class="calc">Soma = [[' + br(S) + ']] &nbsp;&nbsp; Produto = [[' + br(Pd) + ']]</div>',
-        s2: 'Dois números com produto <b>' + br(Pd) + '</b> e soma <b>' + br(S) + '</b>:<div class="calc">' + shown.map(function (pr) { return br(pr[0]) + ' e ' + br(pr[1]) + ' → soma ' + br(pr[0] + pr[1]) + (pr[0] + pr[1] === S ? ' ✓' : ' ✗'); }).join(' &nbsp; ') + '</div>',
-        final: '[[x = ' + Math.min(r1, r2) + ']] e [[x = ' + Math.max(r1, r2) + ']] → S = {' + br(Math.min(r1, r2)) + ', ' + br(Math.max(r1, r2)) + '}',
-        check: [r1, r2].map(function (r) {
-          var t2 = a * r * r, t1 = -a * S * r, t0 = a * Pd;
-          return '[[x = ' + r + ']]: [[' + br(t2) + (t1 < 0 ? ' - ' : ' + ') + br(abs(t1)) + (t0 < 0 ? ' - ' : ' + ') + br(abs(t0)) + ' = 0]] ✓';
-        }).join(' &nbsp; ')
-      }
+      steps: window.GM_STEPS.somaProduto(a, r1, r2)
     };
   }
   G.p2q8 = function (p) { return { prompt: 'Resolver as equações usando soma e produto ([[U = ℝ]]).', items: [eqItem('a', p.a), eqItem('b', p.b)] }; };
@@ -806,16 +705,7 @@
           { when: s[0] * s[1] * s[2], msg: 'Você multiplicou os lados entre si. Calcule a área de <b>cada</b> quadrado e some.' }
         ],
         final: br(tot) + ' cm²',
-        steps: {
-          ask: 'A <b>área total</b> da figura, em cm².',
-          concept: 'Área do quadrado = lado × lado. Figura formada por pedaços que não se sobrepõem: some as áreas.',
-          data: 'Lados: ABCJ = ' + s[0] + ' cm, DEIJ = ' + s[1] + ' cm e FGHI = ' + s[2] + ' cm. Os quadrados ficam lado a lado, sem um cobrir o outro.',
-          s1: 'Área de cada quadrado:<div class="calc">' + s.map(function (v) { return '[[' + v + ' * ' + v + ' = ' + v * v + ']] cm²'; }).join(' &nbsp; ') + '</div>',
-          s2: 'Somamos:<div class="calc">[[' + ar.join(' + ') + ' = ' + tot + ']] cm²</div>',
-          fig: FIG.squares(s, true),
-          final: 'A área da figura é <b>' + br(tot) + ' cm²</b>.',
-          check: 'A área é maior que a do quadrado grande (' + ar[0] + ' cm²) e menor que a do retângulo que envolve a figura ([[' + sum(s) + ' * ' + s[0] + ' = ' + sum(s) * s[0] + ']] cm²) ✓.'
-        }
+        steps: window.GM_STEPS.squaresArea(s)
       }]
     };
   };
@@ -824,8 +714,7 @@
   // Q10 — lajotas
   G.p2q10 = function (p) {
     var Lc = Math.round(p.Lm * 100), Wc = p.Wmm / 10, t = p.t, area = Lc * Wc, ta = t * t, n = area / ta, cost = n * p.price;
-    var cols = Lc / t, rows = Wc / t, half = !Number.isInteger(cols);
-    var noReuse = Math.ceil(cols) * Math.ceil(rows);
+    var noReuse = Math.ceil(Lc / t) * Math.ceil(Wc / t);
     var hints = [
       { when: n, msg: 'Esse é o <b>número de lajotas</b>! Falta calcular o preço total.' },
       { when: area, msg: 'Essa é a área da região em cm². Descubra quantas lajotas cabem e depois o preço.' }
@@ -839,18 +728,7 @@
         hint: { rules: ['conversao', 'lajotas', 'custo'], tip: 'Primeiro passe todas as medidas para <b>centímetros</b>. Depois descubra quantas lajotas cobrem a região.' },
         hints: hints,
         final: money(cost),
-        steps: {
-          ask: 'O <b>total a pagar</b> pelas lajotas.',
-          concept: 'Tudo na <b>mesma unidade</b> antes de calcular: 1 m = 100 cm e 1 cm = 10 mm.',
-          data: 'Comprimento <b>' + br(p.Lm, 2) + ' m</b>, largura <b>' + p.Wmm + ' mm</b>, lajota de <b>' + t + ' cm</b>, preço <b>' + money(p.price) + '</b> cada.',
-          s1: 'Convertendo para centímetros:<div class="calc">[[' + br(p.Lm, 2) + ' * 100 = ' + Lc + ']] cm &nbsp;&nbsp; [[' + p.Wmm + ' ÷ 10 = ' + Wc + ']] cm</div>Área da região: [[' + Lc + ' * ' + Wc + ' = ' + area + ']] cm². Área de uma lajota: [[' + t + ' * ' + t + ' = ' + ta + ']] cm².',
-          s2: 'Quantas lajotas? [[' + area + ' ÷ ' + ta + ' = ' + n + ']].' +
-            (half ? '<p class="aside">No comprimento cabem [[' + Lc + ' ÷ ' + t + ' = ' + br(cols) + ']] lajotas e na largura ' + rows + ' fileiras: são ' + Math.floor(cols) * rows + ' inteiras + ' + rows + ' metades. As metades saem de lajotas cortadas ao meio (aproveitando os recortes).</p>' : '<p class="aside">As lajotas cabem certinho: ' + cols + ' no comprimento × ' + rows + ' na largura = ' + n + '.</p>') +
-            'Preço total:<div class="calc">[[' + n + ' * ' + br(p.price, 2) + ' = ' + br(cost, 2) + ']]</div>',
-          fig: FIG.tiles(Lc, Wc, t, Lc + ' cm (' + br(p.Lm, 2) + ' m)', Wc + ' cm (' + p.Wmm + ' mm)'),
-          final: 'O total a pagar é <b>' + money(cost) + '</b> (' + n + ' lajotas).',
-          check: '[[' + n + ' * ' + ta + ' = ' + area + ']] cm², exatamente a área da região ✓.' + (half ? ' (Sem reaproveitar os recortes, seriam ' + noReuse + ' lajotas.)' : '')
-        }
+        steps: window.GM_STEPS.tiles(p.Lm, p.Wmm, t, p.price)
       }]
     };
   };

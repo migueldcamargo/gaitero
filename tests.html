@@ -117,6 +117,8 @@
   function allText(item) {
     var parts = [item.prompt, item.final, item.hint && item.hint.tip];
     needSteps.concat(['concept']).forEach(function (k) { parts.push(item.steps[k]); });
+    if (item.steps.intro) parts.push(item.steps.intro.t, item.steps.intro.b);
+    (item.steps.list || []).forEach(function (st) { parts.push(st.t, st.b); });
     (item.hints || []).forEach(function (h) { parts.push(h.msg); });
     if (item.answer.options) item.answer.options.forEach(function (o) { parts.push(o.html); parts.push(o.hint); });
     return parts.filter(Boolean).join(' ');
@@ -163,7 +165,7 @@
             if (Array.isArray(h.when)) t(il + ': dica de erro #' + (hi + 1) + ' não é o gabarito', status(item, h.when.map(String)) !== 'correct');
             if (typeof h.when === 'string') t(il + ': dica de erro #' + (hi + 1) + ' não é o gabarito', status(item, h.when) !== 'correct');
           });
-          t(il + ': resolução completa', needSteps.every(function (k) { return item.steps && item.steps[k]; }));
+          t(il + ': resolução completa', item.steps && ((item.steps.list && item.steps.list.length >= 5) || needSteps.every(function (k) { return item.steps[k]; })));
           var rulesOk = item.hint && item.hint.rules && item.hint.rules.length && item.hint.rules.every(function (r) { return F.rules[r]; });
           t(il + ': dica aponta para o Papel de Cola', !!rulesOk, item.hint ? item.hint.rules.join(', ') : 'sem dica');
           var txt = allText(item);
@@ -177,6 +179,11 @@
               var svgs = item.answer.options.map(function (o) { return o.html.replace(/aria-label="[^"]*"/, ''); });
               t(il + ': 6 desenhos diferentes', new Set(svgs).size === svgs.length && svgs.length === 6, svgs.length + ' desenhos');
               t(il + ': toda alternativa errada explica o erro', item.answer.options.every(function (o) { return o.id === item.answer.correct || o.hint; }));
+              // nenhuma alternativa pode ter os mesmos pontos de outra (mesmo desenho com letras trocadas)
+              if (item.answer.options[0].pts) {
+                var sets = item.answer.options.map(function (o) { return o.pts.map(function (p) { return p.join(','); }).sort().join(' '); });
+                t(il + ': desenhos das alternativas são diferentes entre si', new Set(sets).size === sets.length, sets.join(' | '));
+              }
             }
           }
         });

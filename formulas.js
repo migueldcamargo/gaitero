@@ -25,14 +25,16 @@
       '</svg>';
   })();
 
+  var bx = window.GM_LOGIC.boxes;
+
   var BLOCKS = [
     {
       id: 'numeros', label: 'Números', icon: '123', color: 'green',
       title: 'Números e sequências',
       rules: [
         { id: 'par-impar', name: 'Par e ímpar', formula: 'Par: [[2n]] &nbsp;·&nbsp; Ímpar: [[2n + 1]]', note: 'Aqui [[n]] é um número inteiro. Par divide por 2 sem sobrar; ímpar sobra 1.', example: '[[2 * 7 = 14]] é par · [[2 * 7 + 1 = 15]] é ímpar' },
-        { id: 'consecutivos', name: 'Números consecutivos', formula: '[[x, &nbsp;x + 1, &nbsp;x + 2]]', note: 'Consecutivos vêm um depois do outro: aumentam de <b>1 em 1</b>. Dois consecutivos: [[x, &nbsp;x + 1]].', example: '4, 5 e 6 → [[x = 4]]. Somando: [[x + (x + 1) + (x + 2) = 3x + 3]]' },
-        { id: 'impares-consecutivos', name: 'Ímpares consecutivos', formula: '[[x, &nbsp;x + 2, &nbsp;x + 4]] &nbsp;<small>(com [[x]] ímpar)</small>', note: 'Ímpares seguidos aumentam de <b>2 em 2</b> (pulam o par do meio). Pares seguidos também: [[x, &nbsp;x + 2, &nbsp;x + 4]] com [[x]] par.', example: '7, 9 e 11 → [[x = 7]]. Somando: [[3x + 6]]' },
+        { id: 'consecutivos', name: 'Números consecutivos', formula: bx(['[[x]]', '[[x + 1]]', '[[x + 2]]']), note: 'Consecutivos vêm um depois do outro: aumentam de <b>1 em 1</b>. Dois consecutivos:' + bx(['[[x]]', '[[x + 1]]']), example: bx([4, 5, 6]) + '→ [[x = 4]]. Somando: [[x + x + 1 + x + 2 = 3x + 3]]' },
+        { id: 'impares-consecutivos', name: 'Ímpares consecutivos', formula: bx(['[[x]]', '[[x + 2]]', '[[x + 4]]']), note: 'Com [[x]] ímpar. Ímpares seguidos aumentam de <b>2 em 2</b> (pulam o par do meio). Pares seguidos também, com [[x]] par.', example: bx([7, 9, 11]) + '→ [[x = 7]]. Somando: [[x + x + 2 + x + 4 = 3x + 6]]' },
         { id: 'traducoes', name: 'Traduzindo o texto', formula: 'Dobro: [[2x]] &nbsp;·&nbsp; Triplo: [[3x]] &nbsp;·&nbsp; "é igual a": [[=]]', note: 'Para descobrir o número, desfaça as contas de trás para frente: o "+" vira "−" e o "×" vira "÷".', example: '"O triplo de um número mais 5 é 20" → [[3x + 5 = 20]] → [[3x = 15]] → [[x = 5]]' }
       ],
       tip: 'Consecutivos aumentam de 1 em 1. Ímpares (ou pares) consecutivos, de 2 em 2.',
@@ -44,7 +46,7 @@
       rules: [
         { id: 'raiz-potencia', name: 'Raiz de uma potência', formula: 'Índice ímpar: [[R{n}{a^n} = a]]<br>Índice par: [[R{n}{a^n} = |a|]]', note: 'Com índice <b>par</b> o resultado nunca é negativo: por isso vira módulo. Com índice <b>ímpar</b>, o sinal continua o mesmo.', example: '[[R{3}{(-2)^3} = -2]] &nbsp;·&nbsp; [[R{4}{(-2)^4} = |-2| = 2]]' },
         { id: 'raiz-par-negativo', name: 'Raiz par de número negativo', formula: '[[R{par}{negativo}]] → não existe em [[ℝ]]', note: 'Nenhum número real elevado a expoente par dá negativo. Já a raiz de índice ímpar de negativo existe.', example: '[[R{4}{-16}]] não existe · [[R{3}{-8} = -2]]' },
-        { id: 'modulo', name: 'Módulo', formula: '[[|a|]] = distância de [[a]] até o zero', note: 'O módulo é sempre positivo (ou zero). Resolva primeiro a conta de dentro das barras. Sinal que está <b>fora</b> das barras continua valendo.', example: '[[|-8| = 8]] &nbsp;·&nbsp; [[|4 - 7| = |-3| = 3]] &nbsp;·&nbsp; atenção: [[-|5| = -5]]' }
+        { id: 'modulo', name: 'Módulo', formula: '[[|a|]] = distância de [[a]] até o zero', note: '<b>1.</b> Resolva o que está <b>dentro</b> das barras. <b>2.</b> Torne positivo: se era negativo, vira positivo; se era positivo, continua. <b>3.</b> Resolva o resto da conta. Sinal que está <b>fora</b> das barras continua valendo.', example: '[[|-8| = 8]] &nbsp;·&nbsp; [[|4 - 7| = |-3| = 3]] &nbsp;·&nbsp; atenção: [[-|5| = -5]]' }
       ],
       tip: 'Índice par → resultado positivo (módulo). Índice ímpar → mantém o sinal.',
       related: ['p1-2', 'p2-1']
@@ -121,10 +123,10 @@
       id: 'equacoes', label: 'Equações', icon: '=', color: 'blue',
       title: 'Equações e reflexão',
       rules: [
-        { id: 'soma-produto', name: 'Soma e produto das raízes', formula: '[[x^2 + bx + c = 0]]<br>Soma = [[-b]] &nbsp;·&nbsp; Produto = [[c]]', note: 'Procure dois números com essa soma e esse produto. Se o número na frente do [[x^2]] não for 1, <b>divida a equação toda por ele</b> antes.', example: '[[x^2 - 5x + 6 = 0]] → soma 5, produto 6 → raízes 2 e 3' },
+        { id: 'soma-produto', name: 'Soma e produto das raízes', formula: '[[ax^2 + bx + c = 0]]<br>Soma = [[frac{-b}{a}]] &nbsp;·&nbsp; Produto = [[frac{c}{a}]]', note: '[[a]] é o número que acompanha o [[x^2]] (se for [[-x^2]], [[a = -1]]); [[b]] acompanha o [[x]]; [[c]] é o número sozinho. <b>Comece pelo produto:</b> liste os pares que dão o produto e veja qual deles também dá a soma.', example: '[[x^2 - 5x + 6 = 0]]: [[a = 1]], [[b = -5]], [[c = 6]] → soma [[frac{5}{1} = 5]], produto [[frac{6}{1} = 6]] → raízes 2 e 3' },
         { id: 'reflexao', name: 'Reflexão em uma reta', formula: 'Mesma distância, do outro lado, em linha perpendicular', note: 'Cada ponto refletido fica à <b>mesma distância</b> da reta (o eixo), do outro lado, andando em linha reta que forma 90° com ela. Tamanho e forma não mudam; a figura fica espelhada.', example: '', fig: reflexaoMini }
       ],
-      tip: 'Soma e produto: primeiro deixe o [[x^2]] sozinho (número 1 na frente).',
+      tip: 'Soma e produto: ache [[a]], [[b]] e [[c]], calcule [[frac{-b}{a}]] e [[frac{c}{a}]] e comece testando pelo produto.',
       related: ['p2-8', 'p1-10']
     }
   ];

@@ -49,6 +49,10 @@
     }
     return '<span class="m">' + seq(null) + '</span>';
   }
+  // Lista de números/expressões em caixinhas lado a lado (mais fácil de ler que "x, x + 1, x + 2").
+  function boxes(items, cls) {
+    return '<span class="nbox-row' + (cls ? ' ' + cls : '') + '">' + items.map(function (it) { return '<span class="nbox">' + it + '</span>'; }).join('') + '</span>';
+  }
   function fmt(text) {
     if (text == null) return '';
     return String(text).replace(/\[\[([\s\S]+?)\]\]/g, function (_, m) { return mathHTML(m); });
@@ -468,7 +472,7 @@
   }
 
   window.GM_LOGIC = {
-    fmt: fmt, mathHTML: mathHTML, esc: esc, brNum: brNum, brMoney: brMoney,
+    fmt: fmt, boxes: boxes, mathHTML: mathHTML, esc: esc, brNum: brNum, brMoney: brMoney,
     numberCandidates: numberCandidates, parseExpr: parseExpr, evalNum: evalNum, evalPoly: evalPoly,
     polyEqual: polyEqual, isSimplified: isSimplified, polyToMath: polyToMath, polyFromTerms: polyFromTerms,
     degree: degree, pMul: pMul, pAdd: pAdd, validate: validate, previewExpr: previewExpr, canonicalInput: canonicalInput
