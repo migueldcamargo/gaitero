@@ -1,6 +1,6 @@
 /* =====================================================================
    GAITERO MATH — Interface, progresso e gamificação
-   Depende de: logic.js, formulas.js, questions.js, variations.js
+   Depende de: logic.js, formulas.js, questions.js, variations.js e bim4-*.js (4º bimestre)
    ===================================================================== */
 (function () {
   'use strict';
@@ -27,7 +27,7 @@
   function blank() {
     return {
       v: 2, items: {}, xp: 0, streak: 0, best: 0, days: [], today: { date: '', ids: [] },
-      drafts: {}, ver: {}, lastItem: {}, sound: true, created: Date.now()
+      drafts: {}, ver: {}, lastItem: {}, sound: true, created: Date.now(), bim: 4
     };
   }
   function load() {
@@ -60,9 +60,11 @@
     return n;
   }
   // Taxa de acerto: 1ª tentativa certa ÷ itens tentados (não conta quem já tinha visto a resolução).
-  function accuracy() {
+  function accuracy(bim) {
     let total = 0, ok = 0;
+    const pre = bim ? examsOf(bim).map(e => e.id + '.') : null;
     Object.keys(S.items).forEach(id => {
+      if (pre && !pre.some(p => id.indexOf(p) === 0)) return;
       const r = S.items[id];
       if (r.first && r.firstHelp !== 'solution') { total++; if (r.first === 'correct') ok++; }
     });
@@ -71,8 +73,18 @@
 
   /* ============ Banco de questões ============ */
   const examById = id => BANK.exams.filter(e => e.id === id)[0];
-  const qid = (exam, q) => exam.id + '-q' + q.n;
-  const iid = (exam, q, ver, item) => exam.id + '.q' + q.n + '.' + ver + '.' + item.key;
+  // 3º bimestre: P1 e P2 (exam.bim ausente). 4º bimestre: Álgebra, Geometria e Estatística (exam.bim = 4).
+  const bimOf = exam => exam.bim || 3;
+  const examsOf = bim => BANK.exams.filter(e => bimOf(e) === bim);
+  const badgeOf = exam => exam.badge || exam.title;
+  // Identidade da questão: P1/P2 usam o número (como sempre, o progresso antigo continua valendo);
+  // o 4º bimestre usa 'aula-número' (ex.: '130-2').
+  const qkey = q => q.uid || String(q.n);
+  const qid = (exam, q) => exam.id + '-q' + qkey(q);
+  const iid = (exam, q, ver, item) => exam.id + '.q' + qkey(q) + '.' + ver + '.' + item.key;
+  const qByKey = (exam, key) => exam.questions.filter(q => qkey(q) === String(key))[0];
+  const qName = q => (q.ref ? 'Aula ' + q.ref.aula + ' · Questão ' + q.ref.n : 'Questão ' + q.n);
+  const qNum = q => (q.ref ? String(q.ref.n) : pad(q.n));
   function version(q, verId) {
     if (verId && verId !== 'orig') {
       const v = (q.variations || []).filter(x => x.id === verId)[0];
@@ -155,7 +167,7 @@
       grade += s / q.items.length;
       if (touched) evaluated++;
     });
-    return { grade, evaluated };
+    return { grade: grade / exam.questions.length * 10, evaluated };
   }
 
   /* ============ Avatar e arte de abertura ============ */
@@ -185,12 +197,12 @@
   let hintOpenId = null;     // dica aberta (continua aberta ao voltar do Papel de Cola)
   let simBack = false;       // questão aberta pelo "Tentar fazer novamente" do simulado: o ← volta para o resultado
   function route() {
-    const h = current, m1 = /^(p[12])-q(\d+)$/.exec(h), m2 = /^cola(?:-(\w+))?$/.exec(h);
-    if (h === 'p1' || h === 'p2') return { name: 'exam', exam: h };
+    const h = current, m1 = /^([a-z0-9]+)-q([\w-]+)$/.exec(h), m2 = /^cola(?:-([\w-]+))?$/.exec(h);
+    if (examById(h)) return { name: 'exam', exam: h };
     if (h === 'simulado') return { name: 'sim' };
     if (h === 'simulado-q') return { name: 'simq' };
     if (h === 'simulado-fim') return { name: 'simend' };
-    if (m1) return { name: 'question', exam: m1[1], n: +m1[2] };
+    if (m1 && examById(m1[1])) return { name: 'question', exam: m1[1], n: m1[2] };
     if (m2) return { name: 'cola', block: m2[1] || null };
     return { name: 'home' };
   }
@@ -211,6 +223,10 @@
     const r = route();
     document.body.classList.toggle('immersive', r.name === 'question' || r.name === 'simq');
     if (r.name !== 'question') simBack = false;
+    // abrir uma prova/questão de outro bimestre troca o bimestre da tela inicial e do menu
+    if ((r.name === 'exam' || r.name === 'question') && bimOf(examById(r.exam)) !== S.bim) { S.bim = bimOf(examById(r.exam)); save(); }
+    if (r.name !== 'cola') colaBim = null;
+    renderNav();
     $$('#mainnav [data-nav]').forEach(a => {
       const on = (r.name === 'home' && a.dataset.nav === 'home') || (a.dataset.nav === r.exam && r.name === 'exam') || (r.name === 'cola' && a.dataset.nav === 'cola');
       if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
@@ -227,6 +243,19 @@
     paintAvatars();
     if (r.name !== 'cola' || !r.block) window.scrollTo(0, 0);
   }
+  // Menu: Início · provas do bimestre escolhido · Cola
+  const HOME_ICO = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.2 12 4l9 7.2V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
+  const COLA_ICO = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2h9l5 5v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zm8 1.5V8h4.5M8 12h8M8 15.5h8M8 19h5"/></svg>';
+  let navBim = null;
+  function renderNav() {
+    const nav = $('#mainnav');
+    if (!nav || navBim === S.bim) return;
+    navBim = S.bim;
+    nav.classList.toggle('nav-5', S.bim === 4);
+    nav.innerHTML = '<a href="#" data-go="" data-nav="home">' + HOME_ICO + '<span>Início</span></a>' +
+      examsOf(S.bim).map(e => '<a href="#' + e.id + '" data-go="' + e.id + '" data-nav="' + e.id + '"><span class="nav-badge nb-' + e.id + '" aria-hidden="true">' + badgeOf(e) + '</span><span>' + (e.bim ? e.title : e.name.replace('Primeira Prova', 'Prova 1').replace('Segunda Prova', 'Prova 2')) + '</span></a>').join('') +
+      '<a href="#cola" data-go="cola" data-nav="cola" aria-label="Papel de Cola">' + COLA_ICO + '<span>Cola</span></a>';
+  }
   function updateTop() {
     $$('.js-streak').forEach(el => { el.textContent = S.streak; });
     $$('.js-days').forEach(el => { el.textContent = dayStreak(); });
@@ -237,11 +266,11 @@
     return '<div class="stat" role="listitem"><span aria-hidden="true">' + icon + '</span><b>' + value + '</b><span>' + label + '</span></div>';
   }
   function examTile(exam) {
-    const p = examProgress(exam);
-    return '<a class="tile tile-' + exam.id + '" href="#' + exam.id + '" data-go="' + exam.id + '" aria-label="' + exam.name + ': ' + p.doneQ + ' de 10 questões concluídas">' +
-      '<span class="tile-big" aria-hidden="true">' + exam.title + '</span>' +
+    const p = examProgress(exam), N = exam.questions.length;
+    return '<a class="tile tile-' + exam.id + '" href="#' + exam.id + '" data-go="' + exam.id + '" aria-label="' + exam.name + ': ' + p.doneQ + ' de ' + N + ' questões concluídas">' +
+      (exam.bim ? '<span class="tile-ico" aria-hidden="true">' + exam.icon + '</span><span class="tile-word" aria-hidden="true">' + exam.title + '</span>' : '<span class="tile-big" aria-hidden="true">' + exam.title + '</span>') +
       '<span class="tile-prog" aria-hidden="true"><i style="width:' + (p.doneItems / p.totalItems * 100).toFixed(1) + '%"></i></span>' +
-      '<span class="tile-sub" aria-hidden="true">' + p.doneQ + '/10</span></a>';
+      '<span class="tile-sub" aria-hidden="true">' + p.doneQ + '/' + N + '</span></a>';
   }
   function colaTile() {
     return '<a class="tile tile-cola" href="#cola" data-go="cola" aria-label="Papel de Cola: fórmulas e macetes">' +
@@ -255,33 +284,44 @@
       '<span class="tile-sim-txt" aria-hidden="true"><b>Simulado</b><span>' + (S.sim && !S.sim.done ? 'Continuar: questão ' + (S.sim.i + 1) + ' de ' + SIM_N : last != null ? 'Última nota: ' + last : '5 questões sorteadas') + '</span></span></a>';
   }
   function gradeCell(exam) {
-    const e = estimate(exam), txt = L.brNum(Math.round(e.grade * 10) / 10, 1);
-    return '<div class="gcell gcell-' + exam.id + '" aria-label="' + exam.title + ': nota estimada ' + (e.evaluated ? txt : 'ainda sem dados') + ', ' + e.evaluated + ' de 10 questões feitas">' +
-      '<span class="exam-badge" aria-hidden="true">' + exam.title + '</span>' +
+    const e = estimate(exam), txt = L.brNum(Math.round(e.grade * 10) / 10, 1), N = exam.questions.length;
+    return '<div class="gcell gcell-' + exam.id + '" aria-label="' + exam.title + ': nota estimada ' + (e.evaluated ? txt : 'ainda sem dados') + ', ' + e.evaluated + ' de ' + N + ' questões feitas">' +
+      '<span class="exam-badge" aria-hidden="true">' + badgeOf(exam) + '</span>' +
       '<b aria-hidden="true">' + (e.evaluated ? txt : '—') + '</b>' +
-      '<span class="gcell-cov" aria-hidden="true">' + e.evaluated + '/10 feitas</span></div>';
+      '<span class="gcell-cov" aria-hidden="true">' + e.evaluated + '/' + N + (exam.bim ? '' : ' feitas') + '</span></div>';
   }
+  const HOW_HTML4 = '<ul class="how-list">' +
+    '<li>É só uma estimativa para orientar o estudo — <b>não é a nota oficial</b>.</li>' +
+    '<li>Cada assunto (Álgebra, Geometria e Estatística) tem a sua nota, de 0 a 10. Todas as questões do assunto valem o mesmo, e questões com itens a, b, c… dividem o seu valor igualmente.</li>' +
+    '<li>Item certo vale o item inteiro, com ou sem 💡 dica ou ❔ resolução. Pedir ajuda faz parte de aprender!</li>' +
+    '<li>Item não respondido ou ainda errado vale zero.</li>' +
+    '<li>Só as questões originais da apostila contam. As 🔀 variações são treino extra.</li></ul>';
   const HOW_HTML = '<ul class="how-list">' +
     '<li>É só uma estimativa para orientar o estudo — <b>não é a nota oficial</b>.</li>' +
     '<li>Cada questão vale 1 ponto (10 questões = nota 10). Questões com itens a, b, c… dividem o ponto igualmente.</li>' +
     '<li>Item certo vale o item inteiro, com ou sem 💡 dica ou ❔ resolução. Pedir ajuda faz parte de aprender!</li>' +
     '<li>Item não respondido ou ainda errado vale zero: as questões que faltam contam zero até você responder.</li>' +
     '<li>Só as questões originais das provas contam. As 🔀 variações são treino extra.</li></ul>';
+  function bimSwitch() {
+    return '<div class="bim-switch" role="tablist" aria-label="Bimestre">' + [3, 4].map(b =>
+      '<button class="bim-btn' + (S.bim === b ? ' on' : '') + '" role="tab" aria-selected="' + (S.bim === b) + '" data-act="bim" data-bim="' + b + '">' + b + 'º Bimestre</button>').join('') + '</div>';
+  }
   function renderHome() {
-    const today = studiedToday(), acc = accuracy();
+    const today = studiedToday(), acc = accuracy(S.bim), exams = examsOf(S.bim);
     view().innerHTML =
       '<section class="home">' +
       '<div class="hello"><span data-avatar="md"></span><div class="hello-text"><h1>Fala, Gaitero! 🚀</h1><p>Bora aprender hoje?</p></div></div>' +
+      bimSwitch() +
       '<div class="stats" role="list">' +
       stat('📚', today, 'hoje') +
       stat('🎯', acc.total ? Math.round(acc.rate * 100) + '%' : '—', 'acerto') +
       stat('⭐', S.xp, 'XP') +
       '</div>' +
-      '<nav class="tiles" aria-label="Estudar">' + BANK.exams.map(examTile).join('') + colaTile() + simTile() + '</nav>' +
+      '<nav class="tiles tiles-' + exams.length + '" aria-label="Estudar">' + exams.map(examTile).join('') + colaTile() + simTile() + '</nav>' +
       '<section class="grade" aria-labelledby="grade-title">' +
       '<div class="grade-head"><h2 id="grade-title">Nota estimada</h2>' +
       '<button class="info-btn" data-act="how" aria-label="Como a nota estimada é calculada">?</button></div>' +
-      '<div class="grade-row">' + BANK.exams.map(gradeCell).join('') + '</div>' +
+      '<div class="grade-row grade-row-' + exams.length + '">' + exams.map(gradeCell).join('') + '</div>' +
       '</section>' +
       '</section>';
   }
@@ -306,22 +346,30 @@
     return fmt(out.join(' ').replace(/[,.:;]$/, '') + '…');
   }
   function renderExam(id) {
-    const exam = examById(id), p = examProgress(exam);
-    const cards = exam.questions.map(q => {
+    const exam = examById(id), p = examProgress(exam), N = exam.questions.length;
+    const card = q => {
       const st = qStatus(exam, q);
-      return '<a class="qcard st-' + st.key + '" href="#' + qid(exam, q) + '" data-go="' + qid(exam, q) + '" aria-label="Questão ' + q.n + ' (' + q.skill + '): ' + ST[st.key].label + '">' +
-        '<span class="qc-side" aria-hidden="true"><span class="qc-num">' + pad(q.n) + (ST[st.key].icon ? '<span class="qc-icon">' + ST[st.key].icon + '</span>' : '') + '</span></span>' +
+      return '<a class="qcard st-' + st.key + '" href="#' + qid(exam, q) + '" data-go="' + qid(exam, q) + '" aria-label="' + qName(q) + ' (' + q.skill + '): ' + ST[st.key].label + '">' +
+        '<span class="qc-side" aria-hidden="true"><span class="qc-num">' + qNum(q) + (ST[st.key].icon ? '<span class="qc-icon">' + ST[st.key].icon + '</span>' : '') + '</span></span>' +
         '<span class="qc-text" aria-hidden="true">' + qStart(q) + '</span>' +
         '</a>';
-    }).join('');
+    };
+    let cards;
+    if (exam.aulas) {
+      // 4º bimestre: questões agrupadas por aula, com o número original da apostila
+      const aulas = [];
+      exam.questions.forEach(q => { if (aulas.indexOf(q.ref.aula) < 0) aulas.push(q.ref.aula); });
+      cards = aulas.map(a => '<h2 class="aula-h"><span class="aula-n">Aula ' + a + '</span> ' + exam.aulas[a] + '</h2>' +
+        '<div class="qcards">' + exam.questions.filter(q => q.ref.aula === a).map(card).join('') + '</div>').join('');
+    } else cards = '<div class="qcards">' + exam.questions.map(card).join('') + '</div>';
     view().innerHTML =
       '<section class="exam exam-' + exam.id + '">' +
-      '<div class="exam-head"><div class="eh-top"><span class="exam-badge big">' + exam.title + '</span>' +
+      '<div class="exam-head"><div class="eh-top"><span class="exam-badge big">' + badgeOf(exam) + '</span>' +
       '<div class="eh-text"><h1>' + exam.name + '</h1><p class="exam-meta">' + exam.meta + '</p></div></div>' +
       '<div class="exam-prog"><span class="bar" aria-hidden="true"><i style="width:' + (p.doneItems / p.totalItems * 100).toFixed(1) + '%"></i></span>' +
-      '<span>' + p.doneQ + ' de 10 questões</span></div></div>' +
+      '<span>' + p.doneQ + ' de ' + N + ' questões</span></div></div>' +
       '<h2 class="sr-only">Escolha uma questão</h2>' +
-      '<div class="qcards">' + cards + '</div>' +
+      cards +
       '</section>';
   }
 
@@ -330,7 +378,9 @@
   // acertou e a nota (0 a 10). Tocar num número abre a resolução; "Tentar fazer novamente" traz outra
   // variação da mesma questão, no modo treino. Questão com itens (a, b, c…): sorteia um item só.
   const SIM_N = 5;
-  const SIM_SCOPES = { p1: 'P1', p2: 'P2', both: 'P1 + P2' };
+  const SIM_SCOPES3 = { p1: 'P1', p2: 'P2', both: 'P1 + P2' };
+  const SIM_SCOPES4 = { alg: 'Álgebra', geo: 'Geometria', est: 'Estatística', all4: 'Tudo do 4º' };
+  const SIM_SCOPES = Object.assign({}, SIM_SCOPES3, SIM_SCOPES4);
   const simGrade = sim => Math.round(sim.ok.filter(Boolean).length / SIM_N * 100) / 10;
   function shuffle(a) {
     for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t; }
@@ -342,7 +392,7 @@
   }
   function startSim(scope) {
     const pool = [];
-    (scope === 'both' ? BANK.exams : [examById(scope)]).forEach(e => e.questions.forEach(q => pool.push({ e, q })));
+    (scope === 'both' ? examsOf(3) : scope === 'all4' ? examsOf(4) : [examById(scope)]).forEach(e => e.questions.forEach(q => pool.push({ e, q })));
     const list = shuffle(pool).slice(0, SIM_N).map(({ e, q }) => {
       const vars = q.variations || [], ver = vars.length ? pick(vars).id : 'orig';
       return { exam: e.id, n: q.n, ver, key: pick(version(q, ver).items).key };
@@ -358,8 +408,8 @@
       '<h1><span aria-hidden="true">📝</span> Simulado</h1>' +
       '<p class="sim-lead">' + SIM_N + ' questões sorteadas, <b>sem dica e sem resolução</b>. Só no final você descobre o que acertou e a sua nota.</p>' +
       (going ? '<button class="btn btn-primary btn-block" data-act="sim-continue">CONTINUAR SIMULADO (' + (sim.i + 1) + '/' + SIM_N + ')</button>' : '') +
-      '<h2 class="sim-h2">' + (going ? 'Ou comece outro. ' : '') + 'Sortear questões de qual prova?</h2>' +
-      '<div class="sim-scopes">' + Object.keys(SIM_SCOPES).map(k => '<button class="sim-scope sim-' + k + '" data-act="sim-start" data-scope="' + k + '">' + SIM_SCOPES[k] + '</button>').join('') + '</div>' +
+      '<h2 class="sim-h2">' + (going ? 'Ou comece outro. ' : '') + (S.bim === 4 ? 'Sortear questões de qual assunto do 4º bimestre?' : 'Sortear questões de qual prova?') + '</h2>' +
+      '<div class="sim-scopes sim-scopes-' + S.bim + '">' + Object.keys(S.bim === 4 ? SIM_SCOPES4 : SIM_SCOPES3).map(k => '<button class="sim-scope sim-' + k + '" data-act="sim-start" data-scope="' + k + '">' + SIM_SCOPES[k] + '</button>').join('') + '</div>' +
       (lastG != null ? '<button class="link-btn sim-last" data-go="simulado-fim">Ver o último resultado (nota ' + L.brNum(lastG) + ')</button>' : '') +
       '</section>';
   }
@@ -384,7 +434,7 @@
       '<p class="st-prompt">' + fmt(E.ver.prompt) + '</p>' +
       (E.ver.table ? tableHTML(E.ver.table) : '') +
       (E.ver.figure ? '<div class="st-fig">' + E.ver.figure + '</div>' : '') +
-      (E.ver.note ? '<p class="st-note">' + E.ver.note + '</p>' : '') +
+      (E.ver.note ? '<p class="st-note">' + fmt(E.ver.note) + '</p>' : '') +
       (item.prompt ? '<div class="st-item"><span class="st-expr">' + fmt(item.prompt) + '</span></div>' : '') +
       '</article>' +
       '<div class="answer" id="answer">' + fieldsHTML(item, id) + '</div>' +
@@ -481,7 +531,7 @@
     const banner = '<div class="sim-banner ' + (ok ? 'ok' : 'bad') + '">' + (ok ? '✓ Você acertou! Sua resposta: ' : '✗ Sua resposta: ') + '<b>' + ansText(item, sim.ans[i]) + '</b>' +
       (ok ? '' : '<br>Resposta certa: <b>' + fmt(item.final) + '</b>') + '</div>' +
       '<button class="btn btn-primary btn-block sim-retry-btn" data-act="sim-retry"><span aria-hidden="true">🔀</span> TENTAR FAZER NOVAMENTE</button>';
-    openSolution({ where: 'Simulado · Questão ' + (i + 1) + ' (' + E.exam.title + ' · Questão ' + E.q.n + ')', banner });
+    openSolution({ where: 'Simulado · Questão ' + (i + 1) + ' (' + E.exam.title + ' · ' + qName(E.q) + ')', banner });
   }
   // Outra variação da mesma questão (nunca a que caiu no simulado), no modo treino.
   function simRetry() {
@@ -498,12 +548,18 @@
   }
 
   /* ============ Papel de Cola ============ */
+  // 'p1-3' → P1, questão 3 · 'alg-130-2' → Álgebra, aula 130, questão 2
   function relChip(ref) {
-    const parts = ref.split('-');
-    return '<a class="rel-chip" href="#' + parts[0] + '-q' + parts[1] + '" data-go="' + parts[0] + '-q' + parts[1] + '">' + parts[0].toUpperCase() + ' · Questão ' + parts[1] + '</a>';
+    const i = ref.indexOf('-'), exam = examById(ref.slice(0, i)), key = ref.slice(i + 1), q = exam && qByKey(exam, key);
+    if (!q) return '';
+    return '<a class="rel-chip" href="#' + qid(exam, q) + '" data-go="' + qid(exam, q) + '">' + badgeOf(exam) + ' · ' + (q.ref ? 'Aula ' + q.ref.aula + ' · Q' + q.ref.n : 'Questão ' + q.n) + '</a>';
   }
+  let colaBim = null;   // bimestre mostrado no Papel de Cola (null = o da tela inicial)
   function renderCola(blockId) {
-    const blocks = FORM.blocks.map(b =>
+    if (blockId) { const fb = FORM.blocks.filter(b => b.id === blockId)[0]; if (fb) colaBim = fb.bim || 3; }
+    const cb = colaBim || S.bim;
+    const list = FORM.blocks.filter(b => (b.bim || 3) === cb);
+    const blocks = list.map(b =>
       '<section class="cola-block tone-' + b.color + '" id="cola-' + b.id + '" tabindex="-1" aria-labelledby="h-' + b.id + '">' +
       '<h2 id="h-' + b.id + '"><span class="cola-ico" aria-hidden="true">' + b.icon + '</span>' + b.title + '</h2>' +
       '<div class="rules">' + b.rules.map(r =>
@@ -520,8 +576,9 @@
       '<section class="cola">' +
       '<div class="cola-paper">' +
       '<header class="cola-head"><h1>📄 Papel de Cola do Gaitero</h1><p class="cola-lead">Esqueceu uma fórmula? Tá tudo aqui!</p>' +
-      '<p class="cola-sub">Todas as fórmulas que você precisa para mandar bem nas duas provas.</p></header>' +
-      '<nav class="cola-index" aria-label="Assuntos">' + FORM.blocks.map(b => '<button class="cola-chip tone-' + b.color + '" data-act="cola-jump" data-block="' + b.id + '">' + b.label + '</button>').join('') + '</nav>' +
+      '<p class="cola-sub">' + (cb === 4 ? 'Regras, fórmulas e exemplos do 4º bimestre: Álgebra, Geometria e Estatística.' : 'Todas as fórmulas que você precisa para mandar bem nas duas provas.') + '</p>' +
+      '<div class="bim-switch bim-switch-sm" role="tablist" aria-label="Bimestre do Papel de Cola">' + [3, 4].map(b => '<button class="bim-btn' + (cb === b ? ' on' : '') + '" role="tab" aria-selected="' + (cb === b) + '" data-act="cola-bim" data-bim="' + b + '">' + b + 'º Bimestre</button>').join('') + '</div></header>' +
+      '<nav class="cola-index" aria-label="Assuntos">' + list.map(b => '<button class="cola-chip tone-' + b.color + '" data-act="cola-jump" data-block="' + b.id + '">' + b.label + '</button>').join('') + '</nav>' +
       blocks + '</div>' +
       (returnTo ? '<button class="return-fab" data-act="return"><span aria-hidden="true">↩</span> Voltar ao exercício</button>' : '') +
       '</section>';
@@ -545,7 +602,7 @@
   const curId = () => (QS.sim ? 'sim.' : '') + iid(QS.exam, QS.q, QS.ver.id, curItem());
 
   function renderQuestion(examId, n) {
-    const exam = examById(examId), q = exam && exam.questions[n - 1];
+    const exam = examById(examId), q = exam && qByKey(exam, n);
     if (!q) { go(examId || ''); return; }
     const key = qid(exam, q), verId = S.ver[key] || 'orig', ver = version(q, verId);
     const lastKey = S.lastItem[key + '.' + ver.id];
@@ -564,7 +621,8 @@
   function tableHTML(t) {
     const one = rows => '<table class="st-table"><thead><tr>' + t.head.map(h => '<th>' + h + '</th>').join('') + '</tr></thead><tbody>' +
       rows.map(r => '<tr>' + r.map(c => '<td>' + c + '</td>').join('') + '</tr>').join('') + '</tbody></table>';
-    if (t.rows.length <= 5) return '<div class="st-table-wrap">' + one(t.rows) + '</div>';
+    // só tabela de 2 colunas cabe dividida em duas lado a lado
+    if (t.rows.length <= 5 || t.head.length > 2) return '<div class="st-table-wrap">' + one(t.rows) + '</div>';
     const half = Math.ceil(t.rows.length / 2);
     return '<div class="st-table-wrap st-table-split">' + one(t.rows.slice(0, half)) + one(t.rows.slice(half)) + '</div>';
   }
@@ -576,6 +634,8 @@
     polynomial: [['x', 'x'], ['x²', 'x²'], ['x³', 'x³'], ['^', '^'], ['+', '+'], ['−', '-'], ['(', '('], [')', ')']],
     radical: [['√', '√'], ['(', '('], [')', ')'], ['+', '+'], ['−', '-']]
   };
+  // a.keys: teclas extras de uma questão (ex.: ³√, ⁴√, /, x⁴)
+  const keysOf = a => KEYS[a.type].concat(a.keys || []);
   function fieldsHTML(item, id) {
     const a = item.answer, d = draftOf(id);
     const pm = f => '<button type="button" class="pm" data-act="pm" data-for="' + f + '" aria-label="Trocar o sinal (mais ou menos)">±</button>';
@@ -595,13 +655,13 @@
       case 'polynomial': case 'radical':
         return '<label class="sr-only" for="f0">Sua resposta</label><div class="field-row">' +
           input('f0', d, { placeholder: a.type === 'radical' ? 'Ex.: √7 − √5' : 'Ex.: 3x² − 2x' }, 'Sua resposta', ' data-expr="1" inputmode="text"') + '</div>' +
-          '<div class="keypad" role="group" aria-label="Símbolos matemáticos">' + KEYS[a.type].map(k => '<button type="button" class="key" data-act="key" data-ins="' + k[1] + '" aria-label="Inserir ' + k[0] + '">' + k[0] + '</button>').join('') +
+          '<div class="keypad" role="group" aria-label="Símbolos matemáticos">' + keysOf(a).map(k => '<button type="button" class="key" data-act="key" data-ins="' + k[1] + '" aria-label="Inserir ' + k[0] + '">' + k[0] + '</button>').join('') +
           '<button type="button" class="key key-del" data-act="key" data-del="1" aria-label="Apagar">⌫</button></div>' +
-          '<p class="preview" id="preview" aria-live="polite" data-help="' + (a.type === 'radical' ? 'Resposta &lt;b&gt;exata&lt;/b&gt;, com √ (sem arredondar).' : 'Escreva já &lt;b&gt;simplificado&lt;/b&gt;. Potência: ^ ou ² ³.') + '"></p>';
+          '<p class="preview" id="preview" aria-live="polite" data-help="' + (a.type === 'radical' ? (a.rationalized ? 'Resposta &lt;b&gt;exata&lt;/b&gt;, com √ e &lt;b&gt;sem raiz embaixo&lt;/b&gt; da fração. Fração: use a barra /.' : 'Resposta &lt;b&gt;exata&lt;/b&gt;, com √ (sem arredondar).') : 'Escreva já &lt;b&gt;simplificado&lt;/b&gt;. Potência: ^ ou ² ³.') + '"></p>';
       case 'choice': {
         const sel = d;
         const letters = 'ABCDEF';
-        return '<div class="field-label" id="ch-l">Escolha uma opção</div><div class="choices ' + (a.layout === 'figs' ? 'choices-figs' : 'choices-2') + '" role="radiogroup" aria-labelledby="ch-l">' +
+        return '<div class="field-label" id="ch-l">Escolha uma opção</div><div class="choices ' + (a.layout === 'figs' ? 'choices-figs' : a.layout === 'rows' ? 'choices-1' : 'choices-2') + '" role="radiogroup" aria-labelledby="ch-l">' +
           a.options.map((o, i) => '<button type="button" class="choice' + (sel === o.id ? ' on' : '') + '" role="radio" aria-checked="' + (sel === o.id) + '" data-act="choose" data-id="' + o.id + '">' +
             '<span class="choice-letter">' + letters[i] + '</span><span class="choice-body">' + fmt(o.html) + '</span></button>').join('') + '</div>';
       }
@@ -634,7 +694,7 @@
 
   function verChip() {
     const v = QS.ver, n = QS.q.variations ? QS.q.variations.length : 0;
-    if (v.id === 'orig') return '<span class="ver-chip" title="Questão original da prova">📝 Original</span>';
+    if (v.id === 'orig') return '<span class="ver-chip" title="Questão original ' + (QS.exam.bim ? 'da apostila' : 'da prova') + '">📝 Original</span>';
     const i = QS.q.variations.findIndex(x => x.id === v.id) + 1;
     return '<span class="ver-chip ver-var" title="Variação para treino: não muda a nota estimada">🔀 Variação ' + i + '/' + n + '</span><button class="link-btn link-sm" data-act="orig">↺ Original</button>';
   }
@@ -649,12 +709,16 @@
   function reviewBanner(r) {
     return '<div class="banner banner-ok"><span aria-hidden="true">✓</span> Já acertou' + (r.xp ? ' (+' + r.xp + ' XP)' : '') + '. Refazer é treino: não vale XP.</div>';
   }
+  // Dicas progressivas (4º bimestre): item.hint.more = [dica 2, dica 3], uma de cada vez.
+  const hintLvl = {};
   function hintPanel(item) {
     const rules = item.hint.rules.map(id => FORM.rules[id]).filter(Boolean);
+    const tips = [item.hint.tip].concat(item.hint.more || []), lvl = Math.min(hintLvl[curId()] || 1, tips.length);
     return '<div class="hint-panel" id="hint-panel" role="region" aria-label="Dica do Gaitero" tabindex="-1">' +
-      '<div class="hint-title">💡 Dica do Gaitero</div>' +
-      rules.map(r => '<div class="hint-rule"><div class="hint-rule-name">' + r.name + '</div><div class="hint-formula">' + fmt(r.formula) + '</div></div>').join('') +
-      '<p class="hint-tip">' + fmt(item.hint.tip) + '</p>' +
+      '<div class="hint-title">💡 Dica do Gaitero' + (tips.length > 1 ? ' <span class="hint-count">' + lvl + ' de ' + tips.length + '</span>' : '') + '</div>' +
+      rules.slice(0, tips.length > 1 ? 1 : rules.length).map(r => '<div class="hint-rule"><div class="hint-rule-name">' + r.name + '</div><div class="hint-formula">' + fmt(r.formula) + '</div></div>').join('') +
+      tips.slice(0, lvl).map((t, i) => '<p class="hint-tip' + (tips.length > 1 ? ' hint-step' : '') + (i === lvl - 1 && i > 0 ? ' hint-new' : '') + '">' + (tips.length > 1 ? '<b class="hint-n">' + (i + 1) + '</b><span>' + fmt(t) + '</span>' : fmt(t)) + '</p>').join('') +
+      (lvl < tips.length ? '<button class="link-btn hint-more" data-act="hint-more">💡 Ainda não sei: outra dica (' + (lvl + 1) + ' de ' + tips.length + ')</button>' : '') +
       '<p class="hint-go">Agora tente montar a conta! 💪</p>' +
       '<div class="hint-actions"><button class="btn btn-yellow" data-act="hint-close">ENTENDI!</button>' +
       '<button class="link-btn" data-act="to-cola" data-block="' + rules[0].block + '" data-rule="' + rules[0].id + '">📄 Ver no Papel de Cola</button></div></div>';
@@ -673,7 +737,7 @@
       '<header class="qhead">' +
       (simBack ? '<a class="icon-btn" href="#simulado-fim" data-go="simulado-fim" aria-label="Voltar para o resultado do simulado">←</a>'
         : '<a class="icon-btn" href="#' + exam.id + '" data-go="' + exam.id + '" aria-label="Voltar para a ' + exam.title + '">←</a>') +
-      '<div class="qhead-mid"><div class="qhead-title">' + exam.title + ' · Questão ' + q.n + (multi ? ' · item ' + item.key : '') + '</div>' +
+      '<div class="qhead-mid"><div class="qhead-title">' + (exam.bim ? badgeOf(exam) : exam.title) + ' · ' + (q.ref ? 'Aula ' + q.ref.aula + ' · Q' + q.ref.n : 'Questão ' + q.n) + (multi ? ' · item ' + item.key : '') + '</div>' +
       '<div class="bar bar-sm" role="progressbar" aria-label="Progresso na ' + exam.title + '" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + Math.round(examItemsProgress() * 100) + '"><i id="qprog" style="width:' + (examItemsProgress() * 100).toFixed(1) + '%"></i></div></div>' +
       '<span class="chip chip-streak" title="Sequência de acertos" aria-label="Sequência de acertos"><span aria-hidden="true">🔥</span> <b class="js-streak">' + S.streak + '</b></span>' +
       '</header>' +
@@ -681,11 +745,11 @@
       (multi ? '<div class="item-tabs" role="tablist" aria-label="Itens da questão">' + ver.items.map(itemTab).join('') + '</div>' : '') +
       (r && r.done ? reviewBanner(r) : '') +
       '<article class="statement">' +
-      '<div class="st-top"><div class="st-skill">Questão ' + q.n + ' · ' + q.skill + '</div><div class="ver-row">' + verChip() + '</div></div>' +
+      '<div class="st-top"><div class="st-skill">' + qName(q) + ' · ' + q.skill + '</div><div class="ver-row">' + verChip() + '</div></div>' +
       '<p class="st-prompt">' + fmt(ver.prompt) + '</p>' +
       (ver.table ? tableHTML(ver.table) : '') +
       (ver.figure ? '<div class="st-fig">' + ver.figure + '</div>' : '') +
-      (ver.note ? '<p class="st-note">' + ver.note + '</p>' : '') +
+      (ver.note ? '<p class="st-note">' + fmt(ver.note) + '</p>' : '') +
       (item.prompt ? '<div class="st-item">' + (item.label ? '<span class="st-label">' + item.label + '</span>' : '') + '<span class="st-expr">' + fmt(item.prompt) + '</span></div>' : '') +
       '</article>' +
       '<div class="help-row">' +
@@ -696,9 +760,9 @@
       '<div class="answer" id="answer">' + fieldsHTML(item, id) + '</div>' +
       '<div class="msg" id="msg" role="status" aria-live="polite"></div>' +
       '<div class="qnav">' +
-      '<button class="btn btn-ghost btn-sm" data-act="prevq"' + (q.n === 1 ? ' disabled' : '') + ' aria-label="Questão anterior"><span aria-hidden="true">←</span> Anterior</button>' +
-      '<button class="btn btn-ghost btn-sm btn-vary" data-act="vary"><span aria-hidden="true">🔀</span> Variar questão</button>' +
-      '<button class="btn btn-ghost btn-sm" data-act="nextq" aria-label="' + (q.n === 10 ? 'Voltar à prova' : 'Próxima questão') + '">' + (q.n === 10 ? 'Fim da prova' : 'Próxima') + ' <span aria-hidden="true">→</span></button>' +
+      '<button class="btn btn-ghost btn-sm" data-act="prevq"' + (qIndex() === 0 ? ' disabled' : '') + ' aria-label="Questão anterior"><span aria-hidden="true">←</span> Anterior</button>' +
+      ((q.variations || []).length ? '<button class="btn btn-ghost btn-sm btn-vary" data-act="vary"><span aria-hidden="true">🔀</span> Variar questão</button>' : '<span></span>') +
+      '<button class="btn btn-ghost btn-sm" data-act="nextq" aria-label="' + (isLastQ() ? 'Voltar à lista' : 'Próxima questão') + '">' + (isLastQ() ? (exam.bim ? 'Fim do assunto' : 'Fim da prova') : 'Próxima') + ' <span aria-hidden="true">→</span></button>' +
       '</div>' +
       '</div>' +
       '<footer class="qfoot" id="qfoot">' + checkBar() + '</footer>' +
@@ -708,6 +772,8 @@
     QS.multi = a.type === 'multiSelect' ? new Set(d || []) : null;
     updatePreview();
   }
+  const qIndex = () => QS.exam.questions.indexOf(QS.q);
+  const isLastQ = () => qIndex() === QS.exam.questions.length - 1;
   const checkBar = () => '<button class="btn btn-primary btn-block btn-check" id="btn-check" data-act="check">VERIFICAR RESPOSTA</button>';
 
   function showMsg(html, tone) {
@@ -788,17 +854,17 @@
     paintQuestion(); paintAvatars(); window.scrollTo(0, 0);
   }
   function nextQuestion() {
-    const { exam, q } = QS;
-    if (q.n < exam.questions.length) go(exam.id + '-q' + (q.n + 1));
-    else { go(exam.id); toast('🏁 Você chegou ao fim da ' + exam.title + '!'); }
+    const { exam } = QS, i = qIndex();
+    if (i < exam.questions.length - 1) go(qid(exam, exam.questions[i + 1]));
+    else { go(exam.id); toast('🏁 Você chegou ao fim ' + (exam.bim ? 'de ' : 'da ') + exam.title + '!'); }
   }
   function vary() {
     const q = QS.q, ids = (q.variations || []).map(v => v.id), n = ids.length;
-    if (!n) return;
+    if (!n) { toast('Essa questão não tem variações.'); return; }
     // original → 1ª variação → 2ª … → última → volta para a 1ª
     const next = ids[(ids.indexOf(QS.ver.id) + 1) % n];
     S.ver[QS.key] = next; save();
-    renderQuestion(QS.exam.id, q.n);
+    renderQuestion(QS.exam.id, qkey(q));
     paintAvatars();
     toast('🔀 Variação ' + (ids.indexOf(next) + 1) + ' de ' + n + ' — treino extra, não muda sua nota estimada.');
   }
@@ -827,12 +893,12 @@
     QS.solStep = 0;
     const item = curItem(), { exam, q, ver } = QS;
     const sheet = document.createElement('div');
-    sheet.className = 'sheet';
+    sheet.className = 'sheet' + (QS.exam.bim ? ' sheet-b4' : '');
     sheet.setAttribute('role', 'dialog');
     sheet.setAttribute('aria-modal', 'true');
     sheet.setAttribute('aria-labelledby', 'sol-title');
     sheet.innerHTML = '<div class="sheet-card">' +
-      '<header class="sheet-head"><div><h2 id="sol-title">❔ Resolução</h2><span class="sheet-where">' + (extra ? extra.where : exam.title + ' · Questão ' + q.n + (item.label ? ' · item ' + item.key : '') + (ver.id !== 'orig' ? ' · variação' : '')) + '</span></div>' +
+      '<header class="sheet-head"><div><h2 id="sol-title">❔ Resolução</h2><span class="sheet-where">' + (extra ? extra.where : exam.title + ' · ' + qName(q) + (ver.items.length > 1 ? ' · item ' + item.key : '') + (ver.id !== 'orig' ? ' · variação' : '')) + '</span></div>' +
       '<button class="icon-btn" data-act="sheet-close" aria-label="Fechar resolução">✕</button></header>' +
       '<div class="sheet-body" id="sol-body">' + (extra ? extra.banner : '') + '<div class="sol-q">' + fmt(ver.prompt) + (item.prompt ? ' <span class="sol-item">' + (item.label || '') + ' ' + fmt(item.prompt) + '</span>' : '') + '</div><ol class="steps" id="sol-steps"></ol></div>' +
       '<footer class="sheet-foot" id="sol-foot"></footer></div>';
@@ -953,10 +1019,10 @@
     retry,
     continue: doContinue,
     item: el => selectItem(+el.dataset.i),
-    prevq: () => { if (QS.q.n > 1) go(QS.exam.id + '-q' + (QS.q.n - 1)); },
+    prevq: () => { const i = qIndex(); if (i > 0) go(qid(QS.exam, QS.exam.questions[i - 1])); },
     nextq: nextQuestion,
     vary,
-    orig: () => { S.ver[QS.key] = 'orig'; save(); renderQuestion(QS.exam.id, QS.q.n); paintAvatars(); toast('📝 De volta à questão original da prova.'); },
+    orig: () => { S.ver[QS.key] = 'orig'; save(); renderQuestion(QS.exam.id, qkey(QS.q)); paintAvatars(); toast('📝 De volta à questão original ' + (QS.exam.bim ? 'da apostila.' : 'da prova.')); },
     hint: () => {
       const id = curId();
       if (hintOpenId === id) { hintOpenId = null; $('#hint-slot').innerHTML = ''; $('.help-hint').setAttribute('aria-expanded', 'false'); return; }
@@ -966,6 +1032,15 @@
       $('.help-hint').setAttribute('aria-expanded', 'true');
       const p = $('#hint-panel'); if (p) { p.focus({ preventScroll: true }); p.scrollIntoView({ block: 'nearest', behavior: reduceMotion ? 'auto' : 'smooth' }); }
     },
+    'hint-more': () => {
+      const id = curId();
+      hintLvl[id] = (hintLvl[id] || 1) + 1;
+      registerHelp(id, 'hint');
+      $('#hint-slot').innerHTML = hintPanel(curItem());
+      const nw = $('#hint-panel .hint-new'); if (nw) nw.scrollIntoView({ block: 'nearest', behavior: reduceMotion ? 'auto' : 'smooth' });
+    },
+    bim: el => { S.bim = +el.dataset.bim; colaBim = null; save(); render(); },
+    'cola-bim': el => { colaBim = +el.dataset.bim; renderCola(null); window.scrollTo(0, 0); },
     'hint-close': () => { hintOpenId = null; $('#hint-slot').innerHTML = ''; $('.help-hint').setAttribute('aria-expanded', 'false'); const f = $('#answer .field'); if (f) f.focus({ preventScroll: true }); },
     'to-cola': el => { persistDraft(); returnTo = current; colaFocus = el.dataset.rule; go('cola-' + el.dataset.block); },
     return: () => { const r = returnTo; returnTo = null; go(r); },

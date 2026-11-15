@@ -38,7 +38,12 @@
         if (c === '√') { i++; out += radical(arg()); continue; }
         if (s.startsWith('R{', i)) { i += 2; var idx = seq('}'); out += radical(arg(), idx); continue; }
         if (s.startsWith('frac{', i)) { i += 5; var a = seq('}'); out += frac(a, arg()); continue; }
-        if (c === '<') { var j = s.indexOf('>', i); out += s.slice(i, j + 1); i = j + 1; continue; }
+        if (c === '<') {
+          var j = s.indexOf('>', i);
+          // só é etiqueta HTML se for "<letra" ou "</"; senão é o sinal de menor
+          if (j < 0 || !/^<\/?[a-z]/i.test(s.slice(i, i + 3))) { out += '&lt;'; i++; continue; }
+          out += s.slice(i, j + 1); i = j + 1; continue;
+        }
         if (c === '&') { var ent = /^&[a-z#0-9]+;/i.exec(s.slice(i)); if (ent) { out += ent[0]; i += ent[0].length; continue; } }
         if (c === '-') { out += '−'; i++; continue; }
         if (c === '*') { out += '·'; i++; continue; }
@@ -84,7 +89,8 @@
     if (!s) return null;
     s = s.replace(/[−–—]/g, '-');
     s = s.replace(/^[a-z]\s*[₁₂12]?\s*=\s*/, '');
-    s = s.replace(/r\$/g, '').replace(/reais|real/g, '').replace(/cm²|cm2|cm\^2|cm³|cm3|m²|cm|mm|anos|ano|%|lajotas?|divisores/g, '');
+    s = s.replace(/r\$/g, '').replace(/us\$|d[óo]lares?/g, '').replace(/reais|real/g, '').replace(/cm²|cm2|cm\^2|cm³|cm3|m²|m2|cm|mm|anos|ano|%|lajotas?|divisores|graus?|°|horas?|alunos?/g, '');
+    s = s.replace(/(\d)\s*m$/, '$1');
     s = s.replace(/\s+/g, '');
     if (s[0] === '+') s = s.slice(1);
     var mult = 1;
@@ -115,6 +121,9 @@
     var s = String(str).toLowerCase();
     s = s.replace(/[−–—]/g, '-').replace(/[×·⋅∙]/g, '*').replace(/÷/g, '/');
     s = s.replace(/raiz|sqrt|rq/g, '√');
+    // índice da raiz: "³√5" (número pequeno colado no √), "∛5" e "∜5" viram "r3√5", "r4√5"
+    s = s.replace(/[∛]/g, 'r3√').replace(/[∜]/g, 'r4√');
+    s = s.replace(/([⁰¹²³⁴⁵⁶⁷⁸⁹]+)√/g, function (m, d) { return 'r' + d.split('').map(function (c) { return SUP[c]; }).join('') + '√'; });
     s = s.replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]+/g, function (m) { return '^' + m.split('').map(function (c) { return SUP[c]; }).join(''); });
     s = s.replace(/[\[{]/g, '(').replace(/[\]}]/g, ')');
     return s.replace(/\s+/g, '');
@@ -129,6 +138,11 @@
         var raw = s.slice(i, j).replace(',', '.');
         if (!/^(\d+\.?\d*|\.\d+)$/.test(raw)) throw new ParseError('Número mal escrito: ' + s.slice(i, j));
         t.push({ k: 'num', v: parseFloat(raw) }); i = j; continue;
+      }
+      if (c === 'r' && /^r\d+√/.test(s.slice(i))) {
+        var mr = /^r(\d+)√/.exec(s.slice(i)), ri = parseInt(mr[1], 10);
+        if (ri < 2) throw new ParseError('Índice de raiz precisa ser 2 ou mais');
+        t.push(ri === 2 ? { k: 'sqrt' } : { k: 'root', n: ri }); i += mr[0].length; continue;
       }
       if (c === 'x') { t.push({ k: 'x' }); i++; continue; }
       if ('+-*/^()'.indexOf(c) >= 0) { t.push({ k: c }); i++; continue; }
@@ -155,7 +169,7 @@
         var tk = peek();
         if (!tk) break;
         if (tk.k === '*' || tk.k === '/') { next(); n = { t: tk.k === '*' ? 'mul' : 'div', a: n, b: unary() }; }
-        else if (tk.k === 'num' || tk.k === 'x' || tk.k === 'sqrt' || tk.k === '(') { n = { t: 'mul', a: n, b: power(), imp: true }; }
+        else if (tk.k === 'num' || tk.k === 'x' || tk.k === 'sqrt' || tk.k === 'root' || tk.k === '(') { n = { t: 'mul', a: n, b: power(), imp: true }; }
         else break;
       }
       return n;
@@ -176,6 +190,7 @@
       if (tk.k === 'num') return { t: 'num', v: tk.v };
       if (tk.k === 'x') return { t: 'x' };
       if (tk.k === 'sqrt') return { t: 'sqrt', a: atom() };
+      if (tk.k === 'root') return { t: 'root', n: tk.n, a: atom() };
       if (tk.k === '(') {
         var e = expr();
         if (!peek() || peek().k !== ')') throw new ParseError('Faltou fechar um parêntese');
@@ -203,6 +218,10 @@
       case 'neg': return -evalNum(n.a);
       case 'pow': return Math.pow(evalNum(n.a), evalNum(n.b));
       case 'sqrt': var v = evalNum(n.a); return v < 0 ? NaN : Math.sqrt(v);
+      case 'root':
+        var w = evalNum(n.a);
+        if (w < 0) return n.n % 2 === 0 ? NaN : -Math.pow(-w, 1 / n.n);
+        return Math.pow(w, 1 / n.n);
       case 'grp': return evalNum(n.a);
     }
     return NaN;
@@ -233,10 +252,10 @@
         var base = evalPoly(n.a), r = { 0: 1 };
         for (var i = 0; i < e; i++) r = pMul(r, base);
         return r;
-      case 'sqrt':
+      case 'sqrt': case 'root':
         var c = pConst(evalPoly(n.a));
-        if (c === null || c < 0) throw new ParseError('Raiz de expressão com x');
-        return pClean({ 0: Math.sqrt(c) });
+        if (c === null || (c < 0 && (n.t === 'sqrt' || n.n % 2 === 0))) throw new ParseError('Raiz de expressão com x');
+        return pClean({ 0: evalNum({ t: n.t, n: n.n, a: { t: 'num', v: c } }) });
     }
     throw new ParseError('Expressão inválida');
   }
@@ -304,6 +323,7 @@
         case 'div': out = w(m.a, 3) + ' ÷ ' + w(m.b, 3.5); break;
         case 'pow': out = w(m.a, 4.5) + '<sup>' + w(m.b, 0) + '</sup>'; break;
         case 'sqrt': out = radical(w(m.a, 5)); break;
+        case 'root': out = radical(w(m.a, 5), m.n); break;
         case 'grp': out = '(' + w(m.a, 0) + ')'; break;
       }
       return prec < parentPrec && m.t !== 'grp' ? '(' + out + ')' : out;
@@ -406,8 +426,16 @@
     return { status: 'wrong', hint: hint };
   };
 
+  // Tem raiz (de qualquer índice) dentro do denominador de alguma fração?
+  function radInDen(n) {
+    if (!n || typeof n !== 'object') return false;
+    if (n.t === 'div' && (hasNode(n.b, 'sqrt') || hasNode(n.b, 'root'))) return true;
+    return radInDen(n.a) || radInDen(n.b);
+  }
   V.radical = function (item, input) {
     var a = item.answer, s = String(input == null ? '' : input).trim();
+    if (!s) return { status: 'empty', message: 'Digite a expressão antes de verificar 😉' };
+    s = s.replace(/\s*(cm²|cm2|cm\^2|m²|m2|cm|m)\s*$/i, '');
     if (!s) return { status: 'empty', message: 'Digite a expressão antes de verificar 😉' };
     var ast;
     try { ast = parseExpr(s); } catch (e) { return { status: 'invalid', message: 'Não consegui ler essa expressão (' + (e.message || 'formato') + '). Exemplo de formato: [[√7 - √5]]' }; }
@@ -415,7 +443,11 @@
     var v = evalNum(ast);
     if (!isFinite(v)) return { status: 'invalid', message: 'Essa expressão não dá um número real. Confira os sinais dentro das raízes.' };
     var ok = Math.abs(v - a.value) <= 1e-9 * Math.max(1, Math.abs(a.value));
-    if (!hasNode(ast, 'sqrt')) {
+    if (a.rationalized && radInDen(ast)) {
+      return ok ? { status: 'invalid', message: 'O valor está certo, mas o <b>denominador ainda tem raiz</b>. Racionalizar é justamente tirar a raiz de baixo da fração.' }
+        : { status: 'wrong', hint: 'Lembre: a resposta não pode ter raiz no <b>denominador</b> (embaixo da fração).' };
+    }
+    if (!hasNode(ast, 'sqrt') && !hasNode(ast, 'root')) {
       if (Math.abs(v - a.value) < 0.06) return { status: 'invalid', message: 'Esse é um valor <b>aproximado</b>. Escreva a resposta exata usando o símbolo √.' };
       if (!a.integerOk) return { status: 'wrong', hint: null };
     }
@@ -461,7 +493,7 @@
     var a = item.answer;
     switch (a.type) {
       case 'integer': case 'number': case 'percent': case 'currency': return brNum(a.value, Number.isInteger(a.value) ? 0 : 4);
-      case 'numberList': return a.values.map(function (v) { return brNum(v); }).reverse();
+      case 'numberList': var nl = a.values.map(function (v) { return brNum(v); }); return a.ordered ? nl : nl.reverse();
       case 'textList': return a.values.join(', ');
       case 'polynomial': return polyToMath(a.coeffs).replace(/\s+/g, '');
       case 'radical': return a.canonical;

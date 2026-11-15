@@ -461,6 +461,8 @@ body.immersive #view { max-width: 760px; padding: 0; }
 .preview { margin: 0; min-height: 20px; font-size: 15px; color: var(--ink-2); }
 .choices { display: grid; gap: 8px; }
 .choices-2 { grid-template-columns: 1fr 1fr; }
+.choices-1 { grid-template-columns: 1fr; }
+.choices-1 .choice-body { text-align: left; }
 .checks { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .checks .check:last-child:nth-child(odd) { grid-column: 1 / -1; }
 .checks .check { font-size: 15px; }
@@ -940,3 +942,142 @@ text.sp-c, .sp-chip.sp-c text { fill: var(--yellow-ink); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
 }
+
+/* =====================================================================
+   4º BIMESTRE — seletor de bimestre, Álgebra / Geometria / Estatística
+   ===================================================================== */
+:root { --orange: #FF9600; --orange-d: #D97E00; --orange-l: #FFEBD1; --orange-ink: #8A4B00; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --orange-l: #3A2A12; --orange-ink: #FFC27A; } }
+:root[data-theme="dark"] { --orange-l: #3A2A12; --orange-ink: #FFC27A; }
+
+.bim-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 16px; background: var(--sunken); border: 2px solid var(--line); }
+.bim-btn {
+  min-height: 42px; border: 0; border-radius: 12px; background: transparent; color: var(--ink-3); cursor: pointer;
+  font: 800 16px/1 var(--font-display); letter-spacing: .01em;
+}
+.bim-btn.on { background: var(--surface); color: var(--green-ink); box-shadow: 0 2px 0 var(--line-2); }
+.bim-switch-sm { margin-top: 10px; }
+.bim-switch-sm .bim-btn { min-height: 36px; font-size: 14px; }
+
+/* Início do 4º bimestre: 2 × 2 (Álgebra, Geometria, Estatística e Cola) */
+.tiles-3 { grid-template-columns: 1fr 1fr; }
+.tiles-3 .tile { min-height: clamp(104px, 16.5vh, 170px); gap: 7px; }
+.tiles-3 .tile-sim { min-height: 0; }
+.tiles-3 .tile-cola .tile-big { font-size: clamp(28px, 4.6vh, 40px); }
+.tile-ico { font: 800 clamp(26px, 4.2vh, 38px)/1 var(--font-display); text-shadow: 0 2px 0 rgba(0, 0, 0, .12); }
+.tile-word { font: 800 clamp(20px, 3vh, 26px)/1 var(--font-display); text-shadow: 0 2px 0 rgba(0, 0, 0, .12); }
+.tile-alg { background: var(--green); border-color: var(--green-d); box-shadow: 0 6px 0 var(--green-d); }
+.tile-geo { background: var(--blue); border-color: var(--blue-d); box-shadow: 0 6px 0 var(--blue-d); }
+.tile-geo:active { box-shadow: 0 1px 0 var(--blue-d); }
+.tile-est { background: var(--orange); border-color: var(--orange-d); box-shadow: 0 6px 0 var(--orange-d); }
+.tile-est:active { box-shadow: 0 1px 0 var(--orange-d); }
+.grade-row-3 { grid-template-columns: repeat(3, 1fr); }
+.grade-row-3 .gcell { flex-wrap: wrap; gap: 4px 6px; padding: 7px 8px; }
+.grade-row-3 .gcell b { font-size: 20px; }
+.grade-row-3 .gcell-cov { margin-left: 0; width: 100%; }
+.gcell-geo .exam-badge, .exam-geo .exam-badge { background: var(--blue); }
+.gcell-est .exam-badge, .exam-est .exam-badge { background: var(--orange); }
+.mainnav.nav-5 { grid-template-columns: repeat(5, 1fr); padding-left: 4px; padding-right: 4px; }
+.mainnav.nav-5 a { padding-left: 2px; padding-right: 2px; min-width: 0; }
+.mainnav.nav-5 a > span:last-child { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mainnav .nav-badge { width: auto; min-width: 30px; padding: 0 4px; }
+@media (max-width: 380px) { .mainnav.nav-5 a { font-size: 11px; } }
+
+/* Prova: questões agrupadas por aula */
+.aula-h { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin: 6px 2px -2px; font-size: 16px; color: var(--ink-2); }
+.aula-n { font-size: 12px; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; color: #fff; background: var(--green); border-radius: 8px; padding: 3px 8px; }
+.exam-geo .aula-n { background: var(--blue); }
+.exam-est .aula-n { background: var(--orange); }
+
+/* Simulado do 4º bimestre */
+.sim-scopes-4 .sim-scope { font-size: 24px; }
+.sim-scope.sim-geo { background: var(--blue); border-color: var(--blue-d); box-shadow: 0 6px 0 var(--blue-d); }
+.sim-scope.sim-est { background: var(--orange); border-color: var(--orange-d); box-shadow: 0 6px 0 var(--orange-d); }
+.sim-scope.sim-all4 { background: #A560E8; border-color: #8440C8; box-shadow: 0 6px 0 #8440C8; }
+
+/* Dicas progressivas */
+.hint-count { font: 800 12px/1 var(--font-body); background: var(--yellow); color: #4A3600; border-radius: 999px; padding: 3px 8px; margin-left: 6px; vertical-align: middle; }
+.hint-step { display: flex; gap: 8px; align-items: flex-start; }
+.hint-step > span { flex: 1; min-width: 0; }
+.hint-n { flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: var(--yellow-d); color: #fff; font-size: 12px; margin-top: 1px; }
+.hint-new { animation: pop .3s ease-out; }
+.hint-more { display: block; margin: 2px 0 6px; text-align: left; }
+
+/* Destaques nas resoluções */
+.hl { border-radius: 6px; padding: 0 3px; font-weight: 900; }
+.hl-a { background: var(--yellow-l); color: var(--yellow-ink); box-shadow: inset 0 -2px 0 var(--yellow); }
+.hl-b { background: var(--blue-l); color: var(--blue-ink); box-shadow: inset 0 -2px 0 var(--blue); }
+.dg { border-radius: 6px; padding: 0 3px; font-weight: 800; }
+.dg0 { background: var(--sunken); }
+.dg1 { background: var(--green-l); color: var(--green-ink); }
+.dg2 { background: var(--blue-l); color: var(--blue-ink); }
+.dg3 { background: var(--yellow-l); color: var(--yellow-ink); }
+.dg4 { background: var(--red-l); color: var(--red-ink); }
+.nbox-sm .nbox { min-width: 34px; min-height: 30px; padding: 2px 5px; font-size: 13px; }
+.raw-table { border-collapse: collapse; margin: 0 auto; font-size: 14px; font-variant-numeric: tabular-nums; }
+.raw-table td { border: 1.5px solid var(--line-2); padding: 3px 8px; text-align: center; background: var(--surface); }
+.st-table-sm { font-size: 14px; }
+.st-table-sm th, .st-table-sm td { padding: 3px 8px; }
+.st-table tr.tr-hl td { background: var(--yellow-l); color: var(--yellow-ink); font-weight: 900; }
+.step-b .st-table-wrap { margin: 8px 0; }
+
+/* Figuras do 4º bimestre */
+.fig-parts, .fig-seg, .fig-thales, .fig-ang, .fig-land, .fig-tri, .fig-iso, .fig-wall { max-width: 420px; }
+.fig-grid { max-width: 260px; }
+.fg-part { stroke: none; }
+.fg-part.p0 { fill: var(--green); } .fg-part.p1 { fill: var(--blue); } .fg-part.p2 { fill: var(--yellow); }
+.fg-part-line { stroke: rgba(255, 255, 255, .75); stroke-width: 1.2; }
+.fg-part-sep { stroke: var(--ink); stroke-width: 2; }
+.fg-part-frame { fill: none; stroke: var(--ink); stroke-width: 2; }
+.fg-brace { fill: none; stroke: var(--ink-3); stroke-width: 1.4; }
+.fg-part-total { font-size: 12px; font-weight: 900; fill: var(--ink); text-anchor: middle; }
+.fg-part-name { font-size: 11px; font-weight: 900; text-anchor: middle; }
+.fg-part-name.p0 { fill: var(--green-ink); } .fg-part-name.p1 { fill: var(--blue-ink); } .fg-part-name.p2 { fill: var(--yellow-ink); }
+.fg-part-val { font-size: 10.5px; font-weight: 800; fill: var(--ink-2); text-anchor: middle; }
+.fg-seg-a { stroke: var(--green); stroke-width: 5; stroke-linecap: round; }
+.fg-seg-b { stroke: var(--blue); stroke-width: 5; stroke-linecap: round; }
+.fg-pt { fill: var(--ink); }
+.fg-mid { text-anchor: middle; }
+.fig-seg .fg-lbl, .fig-thales .fg-lbl { font-size: 13px; }
+.fig-seg .fg-dim, .fig-thales .fg-dim { font-size: 12px; }
+.fg-tri-fill { fill: rgba(255, 75, 75, .14); }
+.fg-tri-line { fill: none; stroke: var(--ink); stroke-width: 1.8; stroke-linejoin: round; }
+.fg-side { stroke: var(--ink); stroke-width: 1.8; }
+.fg-side-top { stroke: var(--green-d); stroke-width: 3.4; }
+.fg-side-bot { stroke: var(--blue-d); stroke-width: 3.4; }
+.fg-par { stroke: var(--red-d); stroke-width: 2.2; }
+.fg-par-mk { fill: none; stroke: var(--red-d); stroke-width: 1.6; }
+.fg-ang { font-size: 13px; font-weight: 900; text-anchor: middle; }
+.fg-ang.p0 { fill: var(--green-ink); } .fg-ang.p1 { fill: var(--blue-ink); } .fg-ang.p2 { fill: var(--yellow-ink); }
+.fg-cell { fill: var(--surface); stroke: var(--line-2); stroke-width: 1; }
+.fg-reg { fill: #F2C48E; }
+.fg-reg-on { fill: #FF9600; }
+.fg-reg-off { fill: #F2C48E; opacity: .35; }
+.fg-reg-lbl { font-size: 12px; font-weight: 900; fill: #3A2A00; text-anchor: middle; }
+.fg-reg-lbl-off { opacity: .35; }
+.fg-rowcount { font-size: 12px; font-weight: 900; fill: var(--orange-ink); text-anchor: middle; }
+.fg-land { fill: #EDC56E; }
+.fg-land1 { fill: var(--green-l); } .fg-land2 { fill: var(--blue-l); } .fg-land3 { fill: var(--yellow-l); }
+.fg-land-out { fill: none; stroke: var(--ink); stroke-width: 1.8; stroke-linejoin: round; }
+.fg-land-lbl { font: 800 12px var(--font-display); fill: var(--ink); text-anchor: middle; }
+.fig-land .fg-dim { font-size: 11px; }
+.fg-new { fill: var(--red-ink); }
+.fg-ghost { fill: none; stroke: var(--ink-3); stroke-width: 1.2; stroke-dasharray: 4 3; }
+.fg-half1 { fill: rgba(88, 204, 2, .28); }
+.fg-half2 { fill: rgba(28, 176, 246, .28); }
+.fg-faint { opacity: .45; }
+.fg-height { stroke: var(--red-d); stroke-width: 1.8; stroke-dasharray: 4 3; }
+.fg-base { stroke: var(--ink); stroke-width: 3; }
+.fig-tri .fg-dim, .fig-iso .fg-dim, .fig-wall .fg-dim { font-size: 12px; }
+.fg-height-t { fill: var(--red-ink); }
+.fg-wall-light { fill: #A8D99A; }
+.fg-wall-dark { fill: #3E9B34; }
+.fg-wall-out { fill: none; stroke: var(--ink); stroke-width: 1.8; }
+.fg-wall-t { font-size: 13px; font-weight: 900; fill: #fff; text-anchor: middle; }
+.fg-wall-t2 { font-size: 13px; font-weight: 900; fill: #1E4D16; text-anchor: middle; }
+/* resoluções do 4º bimestre: fórmula no meio do texto pode quebrar entre os termos (as contas destacadas continuam inteiras) */
+.sheet-b4 .step-b .m, .sheet-b4 .sol-q .m { white-space: normal; }
+.sheet-b4 .calc .m, .sheet-b4 .m-frac .m { white-space: nowrap; }
+.sheet-b4 .sheet-body > * { min-width: 0; }
+.sheet-b4 .steps > li, .sheet-b4 .step-body, .sheet-b4 .calc-lines > span { min-width: 0; }
+.sheet-b4 .calc { max-width: 100%; }

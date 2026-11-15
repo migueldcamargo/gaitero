@@ -26,6 +26,11 @@
 <script src="contas.js"></script>
 <script src="questions.js"></script>
 <script src="variations.js"></script>
+<script src="bim4-base.js"></script>
+<script src="bim4-alg1.js"></script>
+<script src="bim4-alg2.js"></script>
+<script src="bim4-geo.js"></script>
+<script src="bim4-est.js"></script>
 <script>
 (function () {
   var L = GM_LOGIC, B = GM_BANK, F = GM_FORMULAS;
@@ -138,7 +143,7 @@
   }
   var totalVersions = 0, totalItems = 0;
   B.exams.forEach(function (exam) {
-    t(exam.title + ' tem 10 questões', exam.questions.length === 10);
+    if (!exam.bim) t(exam.title + ' tem 10 questões', exam.questions.length === 10);
     exam.questions.forEach(function (q) {
       var label = exam.title + '-' + q.n;
       t(label + ' tem 3 variações', (q.variations || []).length >= 3, (q.variations || []).length + ' variações');
@@ -207,7 +212,14 @@
   });
 
   /* ---- 6. Papel de Cola ---- */
-  t('Papel de Cola tem 9 blocos', F.blocks.length === 9);
+  t('Papel de Cola tem 9 blocos do 3º bimestre', F.blocks.filter(function (b) { return b.bim === 3; }).length === 9);
+  t('Papel de Cola tem 8 blocos do 4º bimestre', F.blocks.filter(function (b) { return b.bim === 4; }).length === 8);
+  F.blocks.filter(function (b) { return b.bim === 4; }).forEach(function (b) {
+    b.related.forEach(function (ref) {
+      var i = ref.indexOf('-'), ex = B.exams.filter(function (e) { return e.id === ref.slice(0, i); })[0];
+      t('Cola ' + b.id + ': link ' + ref + ' aponta para uma questão', !!ex && ex.questions.some(function (q) { return q.uid === ref.slice(i + 1); }));
+    });
+  });
   t('Todo bloco tem fórmulas e questões relacionadas', F.blocks.every(function (b) { return b.rules.length && b.related.length; }));
   var used = {};
   B.exams.forEach(function (e) { e.questions.forEach(function (q) { q.items.forEach(function (i) { i.hint.rules.forEach(function (r) { used[r] = 1; }); }); }); });
@@ -237,6 +249,70 @@
   var chv = CT.polyMulSteps([[1, 2], [3, 1]], [[1, 1], [1, 0]]);
   t('Chuveirinho: (x² + 3x)(x + 1) = x³ + 4x² + 3x', L.polyEqual(chv.prod, { 3: 1, 2: 4, 1: 3 }));
   t('Chuveirinho: 1 explicação + 4 multiplicações + juntar', chv.list.length === 6 && chv.list.slice(1, 5).every(function (s) { return s.fig.indexOf('chv-arc') > 0; }));
+
+  /* ---- 8. 4º bimestre ---- */
+  function ex4(id) { return B.exams.filter(function (e) { return e.id === id; })[0]; }
+  function it4(exam, uid, key) { var q = ex4(exam).questions.filter(function (q) { return q.uid === uid; })[0]; return key ? q.items.filter(function (i) { return i.key === key; })[0] : q.items[0]; }
+  t('4º bimestre: Álgebra tem 23 questões', ex4('alg').questions.length === 23);
+  t('4º bimestre: Geometria tem 7 questões', ex4('geo').questions.length === 7);
+  t('4º bimestre: Estatística tem 11 questões', ex4('est').questions.length === 11);
+  var uids = {};
+  B.exams.forEach(function (e) { e.questions.forEach(function (q) { var k = e.id + '.q' + (q.uid || q.n); t('ID único: ' + k, !uids[k]); uids[k] = 1; }); });
+  t('IDs do 4º bimestre não colidem com P1/P2', B.exams.filter(function (e) { return e.bim === 4; }).every(function (e) { return e.id !== 'p1' && e.id !== 'p2'; }));
+  var REF4 = [
+    ['126-1', it4('alg', '126-1'), ['d2', 'd3', 'd4', 'd6', 'd7', 'd11', 'd12']],
+    ['126-2', it4('alg', '126-2'), '27720'], ['126-2 (27.720)', it4('alg', '126-2'), '27.720'],
+    ['129-1a', it4('alg', '129-1', 'a'), 'nao'], ['129-1b', it4('alg', '129-1', 'b'), 'sim'], ['129-1c', it4('alg', '129-1', 'c'), 'nao'], ['129-1d', it4('alg', '129-1', 'd'), 'sim'],
+    ['129-2a (7/4)', it4('alg', '129-2', 'a'), '7/4'], ['129-2a (1,75)', it4('alg', '129-2', 'a'), '1,75'], ['129-2b', it4('alg', '129-2', 'b'), '48'], ['129-2c', it4('alg', '129-2', 'c'), '20'],
+    ['129-2d (185/3)', it4('alg', '129-2', 'd'), '185/3'], ['129-2d (61,67)', it4('alg', '129-2', 'd'), '61,67'],
+    ['130-1c', it4('alg', '130-1', 'c'), '36'], ['130-1d (5√5)', it4('alg', '130-1', 'd'), '5√5'], ['130-1d (√125)', it4('alg', '130-1', 'd'), '√125'], ['130-1f', it4('alg', '130-1', 'f'), '3'],
+    ['130-2a', it4('alg', '130-2', 'a'), ['400', '600']], ['130-2d', it4('alg', '130-2', 'd'), ['175', '825']],
+    ['130-3', it4('alg', '130-3'), ['2,8', '4,2']], ['130-4', it4('alg', '130-4'), ['24', '58']], ['130-5', it4('alg', '130-5'), ['9', '81']],
+    ['131-1 (7/5)', it4('alg', '131-1'), '7/5'], ['131-1 (1,4)', it4('alg', '131-1'), '1,4'],
+    ['131-2', it4('alg', '131-2'), '28'], ['131-3 (foto: −8/17)', it4('alg', '131-3'), '-16'], ['131-4', it4('alg', '131-4'), '-16'], ['131-5', it4('alg', '131-5'), ['54', '36']], ['131-6', it4('alg', '131-6'), ['-38', '-28']],
+    ['132-1', it4('alg', '132-1'), ['171', '209', '342']], ['132-2', it4('alg', '132-2'), ['20', '60', '100']], ['132-3', it4('alg', '132-3'), '1100'],
+    ['134-1a', it4('alg', '134-1', 'a'), '3x²+1'], ['134-1b', it4('alg', '134-1', 'b'), 'x³+x²-4'], ['134-1c', it4('alg', '134-1', 'c'), '4x+4'], ['134-1d', it4('alg', '134-1', 'd'), '6x²+x+3'], ['134-1e', it4('alg', '134-1', 'e'), '-x^4+x³+x²+3x+4'],
+    ['134-2', it4('alg', '134-2'), 'g7'],
+    ['135-1a', it4('alg', '135-1', 'a'), '3√2/2'], ['135-1c', it4('alg', '135-1', 'c'), '-√3'], ['135-1f (foto: 4/−√2)', it4('alg', '135-1', 'f'), '-2√2'],
+    ['135-1g (³√25/5)', it4('alg', '135-1', 'g'), '³√25/5'], ['135-1g (∛25/5)', it4('alg', '135-1', 'g'), '∛25/5'], ['135-1h', it4('alg', '135-1', 'h'), '2³√9/3'], ['135-1j', it4('alg', '135-1', 'j'), '-³√4'],
+    ['136-1a (⁴√8)', it4('alg', '136-1', 'a'), '⁴√8'], ['136-1a (⁴√2^3)', it4('alg', '136-1', 'a'), '⁴√2^3'], ['136-1e', it4('alg', '136-1', 'e'), '-¹⁰√512'], ['136-1g', it4('alg', '136-1', 'g'), '¹²√125/5'], ['136-1j', it4('alg', '136-1', 'j'), '⁷√7'],
+    ['137-1a', it4('alg', '137-1', 'a'), '(√5+√3)/2'], ['137-1a (√5/2 + √3/2)', it4('alg', '137-1', 'a'), '√5/2 + √3/2'], ['137-1c', it4('alg', '137-1', 'c'), '(√26+√10)/8'],
+    ['137-1e (3(√7−√5)/2)', it4('alg', '137-1', 'e'), '3(√7-√5)/2'], ['137-1f', it4('alg', '137-1', 'f'), '3-√6'], ['137-1g', it4('alg', '137-1', 'g'), '(5+√5)/2'], ['137-1h', it4('alg', '137-1', 'h'), '-√3-√7'], ['137-1i', it4('alg', '137-1', 'i'), '2√17+2√11'],
+    ['142-1A', it4('geo', '142-1', 'A'), '6'], ['142-1B', it4('geo', '142-1', 'B'), '7'], ['142-1C', it4('geo', '142-1', 'C'), '5'], ['142-1D', it4('geo', '142-1', 'D'), '7'], ['142-1E', it4('geo', '142-1', 'E'), '16'],
+    ['142-2a', it4('geo', '142-2', 'a'), '41'], ['142-2b', it4('geo', '142-2', 'b'), '410.000'],
+    ['145-1', it4('geo', '145-1'), '36'], ['145-2a', it4('geo', '145-2', 'a'), 'pit'], ['145-2b', it4('geo', '145-2', 'b'), '12 cm²'],
+    ['145-3 (36√3)', it4('geo', '145-3'), '36√3'], ['145-3 (√3888)', it4('geo', '145-3'), '√3888'], ['145-4', it4('geo', '145-4'), 'f'], ['145-5', it4('geo', '145-5'), 'R$ 70,00'],
+    ['139-1a', it4('est', '139-1', 'a'), '11'], ['139-1c', it4('est', '139-1', 'c'), '39,25'], ['139-1d', it4('est', '139-1', 'd'), '124,6'],
+    ['139-2', it4('est', '139-2'), '6,6'], ['139-3 (27,13)', it4('est', '139-3'), '27,13'], ['139-3 (217/8)', it4('est', '139-3'), '217/8'], ['139-4', it4('est', '139-4'), '18'],
+    ['140-1 parte 1', it4('est', '140-1', '1'), ['3', '3', '0', '2', '9']], ['140-1 parte 2', it4('est', '140-1', '2'), ['3', '4', '4', '3', '1']], ['140-1 parte 3', it4('est', '140-1', '3'), ['3', '3', '1', '2', '1']],
+    ['140-2a', it4('est', '140-2', 'a'), 'nao'], ['140-2b', it4('est', '140-2', 'b'), '2'], ['140-3a', it4('est', '140-3', 'a'), '10'], ['140-3b', it4('est', '140-3', 'b'), 'tab'],
+    ['140-4', it4('est', '140-4'), ['44', '7', '2', '2']],
+    ['141-1', it4('est', '141-1'), '5,5'], ['141-2a', it4('est', '141-2', 'a'), '13,85'], ['141-2b', it4('est', '141-2', 'b'), 'sim'],
+    ['141-3a pontos médios', it4('est', '141-3', 'a1'), ['3', '9', '15', '21', '27']], ['141-3a %', it4('est', '141-3', 'a2'), ['28', '34', '22', '8', '8']], ['141-3b', it4('est', '141-3', 'b'), '11,04']
+  ];
+  REF4.forEach(function (r) { var st = status(r[1], r[2]); t('Gabarito 4º bim ' + r[0], st === 'correct', 'status: ' + st); });
+  var WRONG4 = [
+    ['135-1a sem racionalizar (3/√2)', it4('alg', '135-1', 'a'), '3/√2', 'invalid'],
+    ['137-1a sem racionalizar', it4('alg', '137-1', 'a'), '1/(√5-√3)', 'invalid'],
+    ['135-1a aproximado (2,12)', it4('alg', '135-1', 'a'), '2,12', 'invalid'],
+    ['135-1f sem o sinal (2√2)', it4('alg', '135-1', 'f'), '2√2', 'wrong'],
+    ['130-2a trocado', it4('alg', '130-2', 'a'), ['600', '400'], 'wrong'],
+    ['131-4 maior em vez do menor', it4('alg', '131-4'), '-12', 'wrong'],
+    ['134-1b não simplificado', it4('alg', '134-1', 'b'), '3x²-x+x³-2x²+x-4', 'invalid'],
+    ['134-1b sem trocar sinais', it4('alg', '134-1', 'b'), '-x³+5x²-2x+4', 'wrong'],
+    ['142-2b com × 100', it4('geo', '142-2', 'b'), '4100', 'wrong'],
+    ['145-1 sem dividir por 2', it4('geo', '145-1'), '72', 'wrong'],
+    ['139-3 média simples', it4('est', '139-3'), '28,5', 'wrong'],
+    ['141-3b média arredondada demais', it4('est', '141-3', 'b'), '11', 'wrong'],
+    ['126-1 faltando o 7 e o 11', it4('alg', '126-1'), ['d2', 'd3', 'd4', 'd6', 'd12'], 'wrong']
+  ];
+  WRONG4.forEach(function (r) { var st = status(r[1], r[2]); t('Recusa 4º bim: ' + r[0], st === r[3], 'status: ' + st + ' (esperado ' + r[3] + ')'); });
+  // raízes de índice n no leitor de expressões
+  t('raiz: ³√8 = 2', Math.abs(L.evalNum(L.parseExpr('³√8')) - 2) < 1e-12);
+  t('raiz: ∛(−8) = −2', Math.abs(L.evalNum(L.parseExpr('∛(-8)')) + 2) < 1e-12);
+  t('raiz: ⁴√16 = 2', Math.abs(L.evalNum(L.parseExpr('⁴√16')) - 2) < 1e-12);
+  t('raiz: 2³√9 = 2·∛9', Math.abs(L.evalNum(L.parseExpr('2³√9')) - 2 * Math.cbrt(9)) < 1e-12);
+  t('raiz: ⁴√(−16) não é real', isNaN(L.evalNum(L.parseExpr('⁴√(-16)'))));
 
   /* ---- Resultado ---- */
   var out = document.getElementById('out');
