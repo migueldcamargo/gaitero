@@ -381,9 +381,19 @@
   const SIM_N = 10;
   // tamanho de um simulado já sorteado (os antigos, de 5 questões, continuam funcionando)
   const simLen = sim => sim.list.length;
-  const SIM_SCOPES3 = { p1: 'P1', p2: 'P2', both: 'P1 + P2' };
-  const SIM_SCOPES4 = { alg: 'Álgebra', geo: 'Geometria', est: 'Estatística', all4: 'Tudo do 4º' };
-  const SIM_SCOPES = Object.assign({}, SIM_SCOPES3, SIM_SCOPES4);
+  // Escopo do simulado = lista de provas/assuntos marcados (ex.: ['geo', 'est']).
+  // Simulados antigos guardavam um texto ('p1', 'both', 'all4'): continuam com o nome certo.
+  const OLD_SCOPES = { both: 'P1 + P2', all4: 'Tudo do 4º' };
+  function scopeLabel(scope) {
+    if (Array.isArray(scope)) return scope.map(id => examById(id).title).join(' + ');
+    return OLD_SCOPES[scope] || (examById(scope) ? examById(scope).title : '');
+  }
+  // assuntos marcados na tela do simulado, guardados por bimestre (S.simSel = { 3: [...], 4: [...] })
+  function simSel() {
+    if (!S.simSel) S.simSel = {};
+    const ids = examsOf(S.bim).map(e => e.id);
+    return (S.simSel[S.bim] || []).filter(id => ids.indexOf(id) >= 0);
+  }
   const simGrade = sim => Math.round(sim.ok.filter(Boolean).length / simLen(sim) * 100) / 10;
   function shuffle(a) {
     for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t; }
@@ -395,7 +405,7 @@
   }
   function startSim(scope) {
     const pool = [];
-    (scope === 'both' ? examsOf(3) : scope === 'all4' ? examsOf(4) : [examById(scope)]).forEach(e => e.questions.forEach(q => pool.push({ e, q })));
+    scope.map(examById).forEach(e => e.questions.forEach(q => pool.push({ e, q })));
     // 1ª volta: uma versão de cada questão; se faltar, novas voltas com versões ainda não usadas
     const list = [], used = new Set();
     for (let round = 0; list.length < SIM_N && round < 4; round++) {
@@ -414,13 +424,20 @@
     go('simulado-q');
   }
   function renderSimSetup() {
-    const sim = S.sim, going = sim && !sim.done, lastG = sim && sim.done ? simGrade(sim) : null;
+    const sim = S.sim, going = sim && !sim.done, lastG = sim && sim.done ? simGrade(sim) : null, sel = simSel();
     view().innerHTML = '<section class="sim-setup">' +
       '<h1><span aria-hidden="true">📝</span> Simulado</h1>' +
       '<p class="sim-lead">' + SIM_N + ' questões sorteadas, <b>sem dica e sem resolução</b>. Só no final você descobre o que acertou e a sua nota.</p>' +
       (going ? '<button class="btn btn-primary btn-block" data-act="sim-continue">CONTINUAR SIMULADO (' + (sim.i + 1) + '/' + simLen(sim) + ')</button>' : '') +
-      '<h2 class="sim-h2">' + (going ? 'Ou comece outro. ' : '') + (S.bim === 4 ? 'Sortear questões de qual assunto do 4º bimestre?' : 'Sortear questões de qual prova?') + '</h2>' +
-      '<div class="sim-scopes sim-scopes-' + S.bim + '">' + Object.keys(S.bim === 4 ? SIM_SCOPES4 : SIM_SCOPES3).map(k => '<button class="sim-scope sim-' + k + '" data-act="sim-start" data-scope="' + k + '">' + SIM_SCOPES[k] + '</button>').join('') + '</div>' +
+      '<h2 class="sim-h2">' + (going ? 'Ou comece outro. ' : '') + (S.bim === 4 ? 'Marque os assuntos que você quer no simulado:' : 'Marque as provas que você quer no simulado:') + '</h2>' +
+      '<div class="sim-scopes sim-scopes-' + S.bim + '" role="group" aria-label="Assuntos do simulado">' + examsOf(S.bim).map(e => {
+        const on = sel.indexOf(e.id) >= 0;
+        return '<button class="sim-scope sim-' + e.id + (on ? ' on' : '') + '" role="checkbox" aria-checked="' + on + '" data-act="sim-toggle" data-scope="' + e.id + '">' +
+          '<span class="sim-box" aria-hidden="true"></span><span class="sim-scope-name">' + e.title + '</span></button>';
+      }).join('') + '</div>' +
+      '<button class="btn btn-primary btn-block sim-go" data-act="sim-start"' + (sel.length ? '' : ' disabled') + '>' +
+        (sel.length ? 'FAZER SIMULADO DE ' + scopeLabel(sel).toUpperCase() : 'MARQUE PELO MENOS ' + (S.bim === 4 ? 'UM ASSUNTO' : 'UMA PROVA')) + '</button>' +
+      '<p class="sim-tip">Toque para marcar ou desmarcar. As questões são sorteadas só ' + (S.bim === 4 ? 'dos assuntos' : 'das provas') + ' marcad' + (S.bim === 4 ? 'os' : 'as') + '.</p>' +
       (lastG != null ? '<button class="link-btn sim-last" data-go="simulado-fim">Ver o último resultado (nota ' + L.brNum(lastG) + ')</button>' : '') +
       '</section>';
   }
@@ -433,7 +450,7 @@
     view().innerHTML = '<section class="qscreen sim-q">' +
       '<header class="qhead">' +
       '<a class="icon-btn" href="#simulado" data-go="simulado" aria-label="Sair do simulado (dá para continuar depois)">✕</a>' +
-      '<div class="qhead-mid"><div class="qhead-title">Simulado · ' + SIM_SCOPES[sim.scope] + '</div>' +
+      '<div class="qhead-mid"><div class="qhead-title">Simulado · ' + scopeLabel(sim.scope) + '</div>' +
       '<div class="bar bar-sm" role="progressbar" aria-label="Questões respondidas" aria-valuemin="0" aria-valuemax="' + N + '"><i id="sim-bar"></i></div></div>' +
       '<span class="chip sim-count" aria-label="Questão ' + (sim.i + 1) + ' de ' + N + '"><b>' + (sim.i + 1) + '</b>/' + N + '</span>' +
       '</header>' +
@@ -1112,8 +1129,16 @@
     }),
     settings: () => openSettings(),
     how: () => showHow(),
-    'sim-start': el => {
-      const sc = el.dataset.scope;
+    'sim-toggle': el => {
+      const id = el.dataset.scope, sel = simSel(), k = sel.indexOf(id);
+      if (k >= 0) sel.splice(k, 1); else sel.push(id);
+      S.simSel[S.bim] = examsOf(S.bim).map(e => e.id).filter(x => sel.indexOf(x) >= 0);   // na ordem das provas
+      save(); renderSimSetup();
+      const b = $('.sim-scope[data-scope="' + id + '"]'); if (b) b.focus({ preventScroll: true });
+    },
+    'sim-start': () => {
+      const sc = simSel();
+      if (!sc.length) return;
       if (S.sim && !S.sim.done && S.sim.i > 0) modal({ title: 'Começar outro simulado?', text: 'O simulado que você começou vai ser descartado.', primary: 'CANCELAR', secondary: 'COMEÇAR OUTRO', onSecondary: () => startSim(sc) });
       else startSim(sc);
     },

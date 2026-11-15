@@ -1083,3 +1083,15 @@ text.sp-c, .sp-chip.sp-c text { fill: var(--yellow-ink); }
 .sheet-b4 .calc { max-width: 100%; }
 /* simulado de 10 questões: números em 2 linhas de 5 (cabe no celular) */
 .sim-nums { display: grid; grid-template-columns: repeat(5, 40px); justify-content: center; gap: 8px; }
+
+/* Simulado: provas/assuntos são caixinhas de marcar; o botão de baixo começa o simulado */
+.sim-scope { display: flex; align-items: center; justify-content: center; gap: 10px; position: relative; }
+.sim-scope:not(.on) { background: var(--surface) !important; color: var(--ink-2); border-color: var(--line-2) !important; box-shadow: 0 4px 0 var(--line-2) !important; }
+.sim-box { flex: none; width: 26px; height: 26px; border-radius: 8px; border: 3px solid currentColor; display: grid; place-items: center; opacity: .55; }
+.sim-scope.on .sim-box { background: #fff; border-color: #fff; opacity: 1; }
+.sim-scope.on .sim-box::after { content: '✓'; font: 900 17px/1 var(--font-body); color: var(--ink); }
+.sim-scopes-4 { grid-template-columns: 1fr; }
+.sim-scopes-4 .sim-scope { min-height: 64px; justify-content: flex-start; padding: 0 20px; }
+.sim-go { margin-top: 4px; }
+.sim-go:disabled { opacity: .55; cursor: default; }
+.sim-tip { margin: -4px 0 0; font-size: 13px; font-weight: 700; color: var(--ink-3); text-align: center; }
