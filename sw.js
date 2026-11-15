@@ -1,6 +1,6 @@
 /* GAITERO MATH — funciona sem internet depois de aberto uma vez (site hospedado).
    Ao mudar qualquer arquivo do app, troque a versão abaixo para os celulares baixarem de novo. */
-const CACHE = 'gaitero-math-v11';
+const CACHE = 'gaitero-math-v12';
 const FILES = [
   './', 'index.html', 'style.css', 'logic.js', 'formulas.js', 'contas.js', 'questions.js', 'variations.js',
   'bim4-base.js', 'bim4-alg1.js', 'bim4-alg2.js', 'bim4-geo.js', 'bim4-est.js', 'app.js',

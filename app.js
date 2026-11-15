@@ -279,9 +279,9 @@
   }
   function simTile() {
     const last = S.sim && S.sim.done ? simGrade(S.sim) : null;
-    return '<a class="tile tile-sim" href="#simulado" data-go="simulado" aria-label="Simulado: 5 questões sorteadas' + (last != null ? ', última nota ' + last : '') + '">' +
+    return '<a class="tile tile-sim" href="#simulado" data-go="simulado" aria-label="Simulado: ' + SIM_N + ' questões sorteadas' + (last != null ? ', última nota ' + last : '') + '">' +
       '<span class="tile-sim-ico" aria-hidden="true">📝</span>' +
-      '<span class="tile-sim-txt" aria-hidden="true"><b>Simulado</b><span>' + (S.sim && !S.sim.done ? 'Continuar: questão ' + (S.sim.i + 1) + ' de ' + SIM_N : last != null ? 'Última nota: ' + last : '5 questões sorteadas') + '</span></span></a>';
+      '<span class="tile-sim-txt" aria-hidden="true"><b>Simulado</b><span>' + (S.sim && !S.sim.done ? 'Continuar: questão ' + (S.sim.i + 1) + ' de ' + simLen(S.sim) : last != null ? 'Última nota: ' + last : SIM_N + ' questões sorteadas') + '</span></span></a>';
   }
   function gradeCell(exam) {
     const e = estimate(exam), txt = L.brNum(Math.round(e.grade * 10) / 10, 1), N = exam.questions.length;
@@ -374,14 +374,17 @@
   }
 
   /* ============ Simulado ============ */
-  // 5 questões sorteadas (de preferência variações), sem dica e sem resolução. Só no fim ele vê o que
+  // 10 questões sorteadas (de preferência variações), sem dica e sem resolução. Só no fim ele vê o que
   // acertou e a nota (0 a 10). Tocar num número abre a resolução; "Tentar fazer novamente" traz outra
   // variação da mesma questão, no modo treino. Questão com itens (a, b, c…): sorteia um item só.
-  const SIM_N = 5;
+  // Assunto com menos de 10 questões (Geometria tem 7): completa com outra versão das mesmas questões.
+  const SIM_N = 10;
+  // tamanho de um simulado já sorteado (os antigos, de 5 questões, continuam funcionando)
+  const simLen = sim => sim.list.length;
   const SIM_SCOPES3 = { p1: 'P1', p2: 'P2', both: 'P1 + P2' };
   const SIM_SCOPES4 = { alg: 'Álgebra', geo: 'Geometria', est: 'Estatística', all4: 'Tudo do 4º' };
   const SIM_SCOPES = Object.assign({}, SIM_SCOPES3, SIM_SCOPES4);
-  const simGrade = sim => Math.round(sim.ok.filter(Boolean).length / SIM_N * 100) / 10;
+  const simGrade = sim => Math.round(sim.ok.filter(Boolean).length / simLen(sim) * 100) / 10;
   function shuffle(a) {
     for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t; }
     return a;
@@ -393,10 +396,18 @@
   function startSim(scope) {
     const pool = [];
     (scope === 'both' ? examsOf(3) : scope === 'all4' ? examsOf(4) : [examById(scope)]).forEach(e => e.questions.forEach(q => pool.push({ e, q })));
-    const list = shuffle(pool).slice(0, SIM_N).map(({ e, q }) => {
-      const vars = q.variations || [], ver = vars.length ? pick(vars).id : 'orig';
-      return { exam: e.id, n: q.n, ver, key: pick(version(q, ver).items).key };
-    });
+    // 1ª volta: uma versão de cada questão; se faltar, novas voltas com versões ainda não usadas
+    const list = [], used = new Set();
+    for (let round = 0; list.length < SIM_N && round < 4; round++) {
+      shuffle(pool.slice()).forEach(({ e, q }) => {
+        if (list.length >= SIM_N) return;
+        const vers = (q.variations || []).map(v => v.id).concat(['orig']).filter(v => !used.has(e.id + '.' + q.n + '.' + v));
+        if (!vers.length) return;
+        const vars = vers.filter(v => v !== 'orig'), ver = vars.length ? pick(vars) : 'orig';
+        used.add(e.id + '.' + q.n + '.' + ver);
+        list.push({ exam: e.id, n: q.n, ver, key: pick(version(q, ver).items).key });
+      });
+    }
     Object.keys(S.drafts).forEach(k => { if (k.indexOf('sim.') === 0) delete S.drafts[k]; });
     S.sim = { scope, list, i: 0, ans: [], ok: [], done: false, at: Date.now() };
     save();
@@ -407,7 +418,7 @@
     view().innerHTML = '<section class="sim-setup">' +
       '<h1><span aria-hidden="true">📝</span> Simulado</h1>' +
       '<p class="sim-lead">' + SIM_N + ' questões sorteadas, <b>sem dica e sem resolução</b>. Só no final você descobre o que acertou e a sua nota.</p>' +
-      (going ? '<button class="btn btn-primary btn-block" data-act="sim-continue">CONTINUAR SIMULADO (' + (sim.i + 1) + '/' + SIM_N + ')</button>' : '') +
+      (going ? '<button class="btn btn-primary btn-block" data-act="sim-continue">CONTINUAR SIMULADO (' + (sim.i + 1) + '/' + simLen(sim) + ')</button>' : '') +
       '<h2 class="sim-h2">' + (going ? 'Ou comece outro. ' : '') + (S.bim === 4 ? 'Sortear questões de qual assunto do 4º bimestre?' : 'Sortear questões de qual prova?') + '</h2>' +
       '<div class="sim-scopes sim-scopes-' + S.bim + '">' + Object.keys(S.bim === 4 ? SIM_SCOPES4 : SIM_SCOPES3).map(k => '<button class="sim-scope sim-' + k + '" data-act="sim-start" data-scope="' + k + '">' + SIM_SCOPES[k] + '</button>').join('') + '</div>' +
       (lastG != null ? '<button class="link-btn sim-last" data-go="simulado-fim">Ver o último resultado (nota ' + L.brNum(lastG) + ')</button>' : '') +
@@ -418,19 +429,19 @@
     if (!sim || sim.done) { go(sim && sim.done ? 'simulado-fim' : 'simulado'); return; }
     const E = simEntry(sim, sim.i);
     QS = { exam: E.exam, q: E.q, key: qid(E.exam, E.q), ver: E.ver, idx: E.idx, sim: true, feedback: null, sel: null, multi: null, solStep: 0 };
-    const item = curItem(), id = curId(), lastQ = sim.i === SIM_N - 1;
+    const item = curItem(), id = curId(), N = simLen(sim), lastQ = sim.i === N - 1;
     view().innerHTML = '<section class="qscreen sim-q">' +
       '<header class="qhead">' +
       '<a class="icon-btn" href="#simulado" data-go="simulado" aria-label="Sair do simulado (dá para continuar depois)">✕</a>' +
       '<div class="qhead-mid"><div class="qhead-title">Simulado · ' + SIM_SCOPES[sim.scope] + '</div>' +
-      '<div class="bar bar-sm" role="progressbar" aria-label="Questões respondidas" aria-valuemin="0" aria-valuemax="' + SIM_N + '"><i id="sim-bar"></i></div></div>' +
-      '<span class="chip sim-count" aria-label="Questão ' + (sim.i + 1) + ' de ' + SIM_N + '"><b>' + (sim.i + 1) + '</b>/' + SIM_N + '</span>' +
+      '<div class="bar bar-sm" role="progressbar" aria-label="Questões respondidas" aria-valuemin="0" aria-valuemax="' + N + '"><i id="sim-bar"></i></div></div>' +
+      '<span class="chip sim-count" aria-label="Questão ' + (sim.i + 1) + ' de ' + N + '"><b>' + (sim.i + 1) + '</b>/' + N + '</span>' +
       '</header>' +
       '<div class="qbody">' +
       '<nav class="sim-nums" aria-label="Ir para a questão">' + sim.list.map((s, k) =>
         '<button class="sim-num' + (k === sim.i ? ' on' : '') + '" data-act="sim-go" data-i="' + k + '" aria-label="Questão ' + (k + 1) + '"' + (k === sim.i ? ' aria-current="step"' : '') + '>' + (k + 1) + '</button>').join('') + '</nav>' +
       '<article class="statement">' +
-      '<div class="st-top"><div class="st-skill">Questão ' + (sim.i + 1) + ' de ' + SIM_N + (lastQ ? ' · <b>a última!</b>' : '') + '</div></div>' +
+      '<div class="st-top"><div class="st-skill">Questão ' + (sim.i + 1) + ' de ' + N + (lastQ ? ' · <b>a última!</b>' : '') + '</div></div>' +
       '<p class="st-prompt">' + fmt(E.ver.prompt) + '</p>' +
       (E.ver.table ? tableHTML(E.ver.table) : '') +
       (E.ver.figure ? '<div class="st-fig">' + E.ver.figure + '</div>' : '') +
@@ -464,12 +475,12 @@
     if (!sim || route().name !== 'simq') return;
     let n = 0;
     $$('.sim-num').forEach((b, k) => { const ok = simAnswerState(sim, k) === 'ok'; if (ok) n++; b.classList.toggle('done', ok); b.classList.remove('miss'); });
-    const bar = $('#sim-bar'); if (bar) bar.style.width = (n / SIM_N * 100) + '%';
+    const bar = $('#sim-bar'); if (bar) bar.style.width = (n / simLen(sim) * 100) + '%';
   }
   // Andar entre as questões: pode pular e voltar; a resposta fica guardada.
   function simGo(i) {
     const sim = S.sim;
-    if (!sim || sim.done || i < 0 || i >= SIM_N) return;
+    if (!sim || sim.done || i < 0 || i >= simLen(sim)) return;
     if (QS && QS.sim) S.drafts[curId()] = collect();
     sim.i = i; save();
     renderSimQuestion();
@@ -509,7 +520,7 @@
     view().innerHTML = '<section class="sim-end">' +
       '<p class="sim-if">Se a prova fosse hoje, você tiraria</p>' +
       '<div class="sim-grade ' + (simGrade(sim) >= 6 ? 'g-ok' : 'g-low') + '">' + gt + '</div>' +
-      '<p class="sim-why">Você acertou <b>' + n + ' de ' + SIM_N + '</b> questões, então sua nota seria <b>' + gt + '</b>.</p>' +
+      '<p class="sim-why">Você acertou <b>' + n + ' de ' + simLen(sim) + '</b> questões, então sua nota seria <b>' + gt + '</b>.</p>' +
       '<div class="sim-dots">' + sim.list.map((s, i) => '<button class="sim-dot ' + (sim.ok[i] ? 'ok' : 'bad') + '" data-act="sim-open" data-i="' + i + '" aria-label="Questão ' + (i + 1) + ': ' + (sim.ok[i] ? 'acertou' : 'errou') + '. Ver a resolução">' + (i + 1) + '</button>').join('') + '</div>' +
       '<p class="sim-tap">Toque num número para ver a resolução.</p>' +
       '<div class="sim-actions"><button class="btn btn-primary btn-block" data-go="simulado">FAZER OUTRO SIMULADO</button>' +
@@ -1177,7 +1188,7 @@
     }
     if (e.key === 'Enter' && route().name === 'simq' && !$('#sheet-root').children.length && e.target.matches && e.target.matches('#answer .field')) {
       e.preventDefault();
-      if (S.sim.i === SIM_N - 1) simSubmit(); else simGo(S.sim.i + 1);
+      if (S.sim.i === simLen(S.sim) - 1) simSubmit(); else simGo(S.sim.i + 1);
       return;
     }
     if (e.key !== 'Enter' || !QS || route().name !== 'question') return;

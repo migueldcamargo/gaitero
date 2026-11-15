@@ -1081,3 +1081,5 @@ text.sp-c, .sp-chip.sp-c text { fill: var(--yellow-ink); }
 .sheet-b4 .sheet-body > * { min-width: 0; }
 .sheet-b4 .steps > li, .sheet-b4 .step-body, .sheet-b4 .calc-lines > span { min-width: 0; }
 .sheet-b4 .calc { max-width: 100%; }
+/* simulado de 10 questões: números em 2 linhas de 5 (cabe no celular) */
+.sim-nums { display: grid; grid-template-columns: repeat(5, 40px); justify-content: center; gap: 8px; }
